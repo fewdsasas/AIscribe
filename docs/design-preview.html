@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AIscribe — 视觉设计</title>
+<link href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,600;0,700;1,400&family=Noto+Serif+SC:wght@400;600;700&family=Noto+Sans+SC:wght@300;400;500;700&family=ZCOOL+XiaoWei&family=Ma+Shan+Zheng&display=swap" rel="stylesheet">
+<style>
+/* ===== Tokens ===== */
+:root {
+  --ink-50: #fcfbf9;
+  --ink-100: #f5f0eb;
+  --ink-200: #e8dfd3;
+  --ink-300: #d4c5b3;
+  --ink-400: #b8a48c;
+  --ink-500: #9a8369;
+  --ink-600: #7a654e;
+  --ink-700: #5c4a36;
+  --ink-800: #3d3224;
+  --ink-900: #211b13;
+
+  --amber-50: #fef8ee;
+  --amber-100: #fdefd4;
+  --amber-200: #fbdba7;
+  --amber-300: #f5c376;
+  --amber-400: #e8a84a;
+  --amber-500: #d48a2a;
+  --amber-600: #b06e20;
+  --amber-700: #8c551b;
+  --amber-800: #6d4117;
+  --amber-900: #533214;
+
+  --red-50: #fef2ee;
+  --red-500: #c2410c;
+
+  --green-50: #f2f9ec;
+  --green-500: #4d7c2b;
+
+  --bg: var(--ink-50);
+  --surface: #ffffff;
+  --surface-hover: var(--ink-50);
+  --border: var(--ink-200);
+  --text: var(--ink-800);
+  --text-secondary: var(--ink-500);
+  --accent: var(--amber-500);
+  --accent-hover: var(--amber-600);
+
+  --shadow-sm: 0 1px 2px rgba(33,27,19,0.04);
+  --shadow-md: 0 4px 12px rgba(33,27,19,0.06);
+  --shadow-lg: 0 8px 24px rgba(33,27,19,0.08);
+  --shadow-xl: 0 16px 40px rgba(33,27,19,0.1);
+
+  --sidebar-w: 220px;
+  --topbar-h: 52px;
+  --radius: 8px;
+}
+.dark {
+  --bg: #16120e;
+  --surface: #1f1a14;
+  --surface-hover: #2a231c;
+  --border: #2a231c;
+  --text: #e8dfd3;
+  --text-secondary: #9a8369;
+  --shadow-sm: 0 1px 2px rgba(0,0,0,0.3);
+  --shadow-md: 0 4px 12px rgba(0,0,0,0.4);
+  --shadow-lg: 0 8px 24px rgba(0,0,0,0.5);
+  --shadow-xl: 0 16px 40px rgba(0,0,0,0.6);
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+body {
+  font-family: 'Noto Sans SC', -apple-system, system-ui, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  line-height: 1.6;
+}
+::selection { background: var(--amber-200); color: var(--ink-800); }
+
+/* Layout */
+.app { display:flex; height:100vh; overflow:hidden; }
+
+/* Sidebar — 窄、轻、文字为主 */
+.sidebar {
+  width: var(--sidebar-w); background: var(--surface);
+  border-right: 1px solid var(--border);
+  display:flex; flex-direction:column; flex-shrink:0;
+}
+.sidebar-logo {
+  height: var(--topbar-h); display:flex; align-items:center; gap:8px;
+  padding: 0 16px; border-bottom: 1px solid var(--border);
+}
+.logo-mark {
+  width: 28px; height: 28px; border: 1.5px solid var(--accent);
+  border-radius: 50%; display:flex; align-items:center; justify-content:center;
+  color: var(--accent); font-family: 'Lora', serif; font-weight:700; font-size:13px;
+}
+.logo-text {
+  font-family: 'Lora', 'Noto Serif SC', serif;
+  font-size: 15px; font-weight: 600; color: var(--text);
+  letter-spacing: -0.3px;
+}
+.sidebar-nav { flex:1; padding: 12px 8px; display:flex; flex-direction:column; gap: 1px; }
+.nav-item {
+  display:flex; align-items:center; gap: 10px; padding: 8px 10px;
+  border-radius: var(--radius); font-size: 13px; font-weight: 400;
+  color: var(--text-secondary); cursor:pointer; transition: all .15s;
+  border:none; background:none; width:100%; text-align:left;
+}
+.nav-item:hover { background: var(--surface-hover); color: var(--text); }
+.nav-item.active { background: var(--amber-50); color: var(--amber-700); font-weight: 500; }
+.dark .nav-item.active { background: rgba(212,138,42,0.08); color: var(--amber-400); }
+.nav-item .icon { width: 16px; height: 16px; flex-shrink:0; opacity: 0.7; }
+.sidebar-footer {
+  padding: 12px 16px; border-top: 1px solid var(--border);
+  font-size: 11px; color: var(--text-secondary);
+}
+
+/* Main */
+.main { flex:1; display:flex; flex-direction:column; overflow:hidden; }
+
+/* TopBar — 极简，只有必要元素 */
+.topbar {
+  height: var(--topbar-h); background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display:flex; align-items:center; justify-content:space-between;
+  padding: 0 20px; flex-shrink:0;
+}
+.topbar-left { display:flex; align-items:center; gap: 6px; }
+.topbar-breadcrumb { display:flex; align-items:center; gap: 6px; font-size: 12px; color: var(--text-secondary); }
+.topbar-breadcrumb .sep { color: var(--border); }
+.topbar-breadcrumb .cur { color: var(--text); font-weight:500; }
+.topbar-right { display:flex; align-items:center; gap: 2px; }
+.icon-btn {
+  width: 32px; height: 32px; display:flex; align-items:center; justify-content:center;
+  border-radius: var(--radius); border:none; background:none;
+  color: var(--text-secondary); cursor:pointer; transition: all .15s;
+}
+.icon-btn:hover { background: var(--surface-hover); color: var(--text); }
+
+/* Content */
+.content { flex:1; overflow-y:auto; }
+.content-inner { max-width: 960px; margin: 0 auto; padding: 40px 32px; }
+
+/* ===== Components ===== */
+
+/* Button */
+.btn {
+  display:inline-flex; align-items:center; gap: 6px; padding: 7px 14px;
+  border-radius: var(--radius); font-size: 13px; font-weight: 500;
+  border: none; cursor:pointer; transition: all .15s; white-space:nowrap;
+  line-height: 1; font-family: inherit;
+}
+.btn-primary { background: var(--accent); color: white; }
+.btn-primary:hover { background: var(--accent-hover); }
+.btn-secondary { background: var(--surface); color: var(--text); border: 1px solid var(--border); }
+.btn-secondary:hover { border-color: var(--ink-300); }
+.btn-ghost { background:transparent; color: var(--text-secondary); }
+.btn-ghost:hover { background: var(--surface-hover); color: var(--text); }
+.btn-sm { padding: 5px 10px; font-size: 12px; }
+.btn-icon { width: 32px; height: 32px; padding:0; justify-content:center; }
+
+/* Card — 带轻微纹理感 */
+.card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  overflow:hidden;
+  transition: all .2s;
+}
+.card:hover { box-shadow: var(--shadow-md); }
+.card-body { padding: 20px; }
+.card-footer {
+  padding: 12px 20px; border-top: 1px solid var(--border);
+  display:flex; align-items:center; justify-content:space-between;
+}
+
+/* Stat card — 数字以楷书呈现，文人气息 */
+.stat-card {
+  background: var(--surface); border-radius: var(--radius);
+  border: 1px solid var(--border); padding: 20px;
+  transition: all .2s;
+}
+.stat-card:hover { box-shadow: var(--shadow-md); }
+.stat-num {
+  font-family: 'Ma Shan Zheng', 'ZCOOL XiaoWei', 'KaiTi', '楷体', serif;
+  font-size: 30px; font-weight: 400; line-height: 1.2;
+  letter-spacing: 2px; color: var(--text);
+}
+.stat-num .unit {
+  font-family: 'Noto Serif SC', serif;
+  font-size: 13px; font-weight: 400; opacity: 0.6; margin-left: 2px;
+  letter-spacing: 1px;
+}
+.stat-label { font-size: 11px; color: var(--text-secondary); text-transform:uppercase; letter-spacing:1px; margin-bottom: 2px; }
+
+/* Badge — 墨水感 */
+.badge {
+  display:inline-flex; align-items:center; gap: 4px; padding: 2px 8px;
+  border-radius: 3px; font-size: 11px; font-weight: 500;
+}
+.badge-success { background: var(--green-50); color: var(--green-500); }
+.badge-warning { background: var(--amber-50); color: var(--amber-700); }
+.badge-info { background: var(--ink-100); color: var(--ink-600); }
+.badge-ghost { background:transparent; color: var(--text-secondary); border: 1px solid var(--border); }
+
+/* Tags */
+.tag {
+  display:inline-flex; align-items:center; padding: 3px 10px;
+  border-radius: 999px; font-size: 12px; border: 1px solid var(--border);
+  color: var(--text-secondary); transition: all .15s; cursor:default;
+}
+.tag:hover { border-color: var(--accent); color: var(--accent); }
+
+/* Modal */
+.modal-overlay {
+  position:fixed; inset:0; background: rgba(33,27,19,0.3); backdrop-filter: blur(2px);
+  display:flex; align-items:center; justify-content:center; z-index:100;
+}
+.modal {
+  background: var(--surface); border-radius: var(--radius);
+  box-shadow: var(--shadow-xl); width:100%; max-width: 440px; margin: 20px;
+  animation: modalIn .2s ease-out;
+}
+@keyframes modalIn { from{opacity:0;transform:translateY(6px)} }
+.modal-h { padding: 20px 24px 0; display:flex; align-items:center; justify-content:space-between; }
+.modal-h h2 { font-size: 15px; font-weight:600; }
+.modal-b { padding: 16px 24px; }
+.modal-f { padding: 12px 24px; border-top:1px solid var(--border); display:flex; justify-content:flex-end; gap:8px; }
+
+/* Form */
+.fg { margin-bottom: 14px; }
+.fl { display:block; font-size: 11px; font-weight:500; color: var(--text-secondary); text-transform:uppercase; letter-spacing:1px; margin-bottom: 4px; }
+.fi, .fs, .ft {
+  width:100%; padding: 8px 12px; background: var(--bg);
+  border: 1px solid var(--border); border-radius: var(--radius);
+  font-size: 13px; color: var(--text); transition: all .15s;
+  outline:none; font-family:inherit;
+}
+.fi:focus, .fs:focus, .ft:focus { border-color: var(--accent); }
+.ft { resize:vertical; min-height: 70px; }
+.fs { appearance:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%239a8369' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 10px center; padding-right:30px; }
+
+/* Progress */
+.progress { height: 3px; background: var(--ink-100); border-radius: 2px; overflow:hidden; }
+.progress-fill { height:100%; border-radius:2px; transition:width .4s; background: var(--accent); }
+.progress-fill.done { background: var(--green-500); }
+
+/* Skeleton */
+.skeleton {
+  background: linear-gradient(90deg, var(--ink-100) 25%, var(--ink-200) 50%, var(--ink-100) 75%);
+  background-size:200% 100%; animation: shimmer 1.5s infinite; border-radius: 3px;
+}
+@keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+
+/* Project card */
+.pg { display:grid; grid-template-columns:repeat(auto-fill,minmax(300px,1fr)); gap: 14px; }
+.p-meta { display:flex; align-items:center; gap: 12px; margin-bottom: 10px; }
+.p-icon { width: 36px; height: 36px; border-radius: var(--radius); display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0; }
+.p-info { flex:1; min-width:0; }
+.p-name { font-size: 14px; font-weight:600; line-height:1.3; }
+.p-desc { font-size: 12px; color: var(--text-secondary); margin-top: 1px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.p-stats { display:flex; gap: 16px; margin-top: 10px; }
+.p-stats .ps { font-size: 12px; }
+.p-stats .ps .n { font-weight:600; }
+.p-stats .ps .l { color: var(--text-secondary); margin-left: 3px; }
+
+/* Chat */
+.chat { display:flex; gap: 10px; margin-bottom: 16px; }
+.chat.right { flex-direction:row-reverse; }
+.chat-av {
+  width: 28px; height: 28px; border-radius: 50%; display:flex; align-items:center; justify-content:center;
+  flex-shrink:0; font-size: 11px; font-weight:600;
+}
+.chat-av.u { background: var(--amber-100); color: var(--amber-700); }
+.chat-av.a { background: var(--ink-100); color: var(--ink-600); }
+.chat-b {
+  max-width: 72%; padding: 10px 14px; border-radius: var(--radius);
+  font-size: 13px; line-height: 1.75;
+}
+.chat-b.u { background: var(--amber-50); color: var(--ink-800); }
+.chat-b.a { background: var(--surface); border: 1px solid var(--border); color: var(--text); }
+
+/* Skill invocation card */
+.skill-card {
+  border-radius: var(--radius); padding: 10px 12px; margin-bottom: 8px;
+  font-size: 12px; line-height: 1.5; border-left: 3px solid;
+}
+.skill-card.running { background: var(--amber-50); border-color: var(--amber-400); }
+.skill-card.done { background: var(--green-50); border-color: var(--green-500); }
+.skill-card .sc-h { display:flex; align-items:center; gap: 6px; margin-bottom: 2px; }
+.skill-card .sc-h .sn { font-weight:600; }
+.skill-card .sc-h .st { font-size: 11px; }
+.skill-card .sc-d { color: var(--text-secondary); }
+
+/* Empty state */
+.empty { text-align:center; padding: 48px 20px; }
+.empty .e-icon { font-size: 36px; margin-bottom: 12px; opacity: 0.5; }
+.empty h3 { font-size: 14px; font-weight:600; margin-bottom: 4px; }
+.empty p { font-size: 12px; color: var(--text-secondary); }
+
+/* Demo */
+.section-title { font-size: 17px; font-weight:600; margin-bottom: 2px; }
+.section-sub { font-size: 12px; color: var(--text-secondary); margin-bottom: 20px; }
+.sec { margin-bottom: 40px; }
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-mark">A</div>
+      <span class="logo-text">AIscribe</span>
+    </div>
+    <nav class="sidebar-nav">
+      <button class="nav-item active">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>项目
+      </button>
+      <button class="nav-item">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M15.5 2H8.6c-.4 0-.8.2-1.1.5l-3 3.5c-.3.3-.5.7-.5 1.1V18a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V4.5c0-.8-.7-1.5-1.5-1.5z"/><path d="M8 2v3c0 .6-.4 1-1 1H4"/></svg>写作
+      </button>
+      <button class="nav-item">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="4"/><line x1="21.17" y1="8" x2="12" y2="8"/><line x1="3.95" y1="6.06" x2="8.54" y2="14"/><line x1="10.88" y1="21.94" x2="15.46" y2="14"/></svg>工作室
+      </button>
+      <button class="nav-item">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 3h7a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7"/><path d="M12 3v4a2 2 0 0 0 2 2h4"/></svg>技能
+      </button>
+      <button class="nav-item">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>AI 对话
+      </button>
+      <button class="nav-item">
+        <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2"/></svg>设置
+      </button>
+    </nav>
+    <div class="sidebar-footer">AIscribe · 0.1.0</div>
+  </aside>
+
+  <!-- Main -->
+  <div class="main">
+    <header class="topbar">
+      <div class="topbar-left">
+        <div class="topbar-breadcrumb">
+          <span class="cur">项目</span>
+          <span class="sep">/</span>
+          <span>龙与魔法</span>
+        </div>
+      </div>
+      <div class="topbar-right">
+        <button class="icon-btn">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        </button>
+        <button class="btn btn-sm btn-ghost">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>
+          AI 助手
+        </button>
+      </div>
+    </header>
+
+    <div class="content">
+      <div class="content-inner">
+        <h1 style="font-size: 22px; font-weight: 600; letter-spacing: -0.3px; margin-bottom: 2px;">AIscribe 设计系统</h1>
+        <p style="font-size: 13px; color: var(--text-secondary); margin-bottom: 32px;">以墨色为骨、暖金为韵，为写作者打造的视觉语言</p>
+
+        <!-- Colors -->
+        <div class="sec">
+          <h2 class="section-title">墨色</h2>
+          <p class="section-sub">取自中国传统「墨分五色」——焦、浓、重、淡、清</p>
+          <div style="display:flex; gap: 8px;">
+            <div style="flex:1; padding: 12px; border-radius: var(--radius); background: #211b13; color: #e8dfd3; font-size: 11px; text-align:center;">焦 #211b13</div>
+            <div style="flex:1; padding: 12px; border-radius: var(--radius); background: #3d3224; color: #e8dfd3; font-size: 11px; text-align:center;">浓 #3d3224</div>
+            <div style="flex:1; padding: 12px; border-radius: var(--radius); background: #5c4a36; color: #e8dfd3; font-size: 11px; text-align:center;">重 #5c4a36</div>
+            <div style="flex:1; padding:12px; border-radius:var(--radius); background:#9a8369; color:#fcfbf9; font-size:11px; text-align:center;">淡 #9a8369</div>
+            <div style="flex:1; padding:12px; border-radius:var(--radius); background:#d4c5b3; color:#3d3224; font-size:11px; text-align:center;">清 #d4c5b3</div>
+          </div>
+        </div>
+
+        <!-- Buttons -->
+        <div class="sec">
+          <h2 class="section-title">按钮</h2>
+          <p class="section-sub">暖金点缀，墨色打底</p>
+          <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
+            <button class="btn btn-primary">新建项目</button>
+            <button class="btn btn-secondary">导出</button>
+            <button class="btn btn-ghost">取消</button>
+            <button class="btn btn-primary btn-sm">小按钮</button>
+            <button class="btn btn-secondary btn-sm">次要</button>
+          </div>
+        </div>
+
+        <!-- Badges + Tags -->
+        <div class="sec">
+          <h2 class="section-title">状态 & 标签</h2>
+          <p class="section-sub">克制地使用颜色，保留墨色的朴素感</p>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <span class="badge badge-success">已完成</span>
+            <span class="badge badge-warning">写作中</span>
+            <span class="badge badge-info">规划中</span>
+            <span class="badge badge-ghost">暂停</span>
+            <span class="tag">玄幻</span>
+            <span class="tag">仙侠</span>
+            <span class="tag">悬疑</span>
+          </div>
+        </div>
+
+        <!-- Stats -->
+        <div class="sec">
+          <h2 class="section-title">数据面板</h2>
+          <p class="section-sub">用 Lora 衬线体呈现数字，与正文 Sans 区分</p>
+          <div style="display:grid; grid-template-columns:repeat(4,1fr); gap:14px;">
+            <div class="stat-card">
+              <div class="stat-label">总字数</div>
+              <div class="stat-num">16<span class="unit">万字</span></div>
+              <div style="margin-top:6px; font-size:11px; color:var(--text-secondary);">较昨日 +2,300 字</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">项目</div>
+              <div class="stat-num">3</div>
+              <div style="margin-top:6px; font-size:11px; color:var(--text-secondary);">进行中 2</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">写作速度</div>
+              <div class="stat-num">1,240<span class="unit">字/时</span></div>
+              <div style="margin-top:6px; font-size:11px; color:var(--text-secondary);">较昨日 +12%</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-label">今日</div>
+              <div class="stat-num">1,240<span class="unit">/2,000</span></div>
+              <div class="progress" style="margin-top:8px"><div class="progress-fill" style="width:62%"></div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Project Cards -->
+        <div class="sec">
+          <h2 class="section-title">项目卡片</h2>
+          <p class="section-sub">去阴影、去圆角、去装饰，用好边界和留白</p>
+          <div class="pg">
+            <div class="card">
+              <div class="card-body">
+                <div class="p-meta">
+                  <div class="p-icon" style="background:var(--green-50)">🐉</div>
+                  <div class="p-info">
+                    <div class="p-name">龙与魔法</div>
+                    <div class="p-desc">一个关于龙骑士的奇幻故事，融合东方玄幻与西方魔法。</div>
+                  </div>
+                  <span class="badge badge-success">写作中</span>
+                </div>
+                <div class="p-stats">
+                  <div class="ps"><span class="n">12.3</span><span class="l">万字</span></div>
+                  <div class="ps"><span class="n">48</span><span class="l">章</span></div>
+                  <div class="ps"><span class="n">76</span><span class="l">%</span></div>
+                </div>
+                <div class="progress" style="margin-top:10px"><div class="progress-fill" style="width:76%"></div></div>
+              </div>
+              <div class="card-footer">
+                <span style="font-size:11px; color:var(--text-secondary);">6月23日更新</span>
+                <div style="display:flex; gap:2px;">
+                  <button class="btn btn-sm btn-ghost btn-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button>
+                  <button class="btn btn-sm btn-ghost btn-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
+                  <button class="btn btn-sm btn-ghost btn-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+                </div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-body">
+                <div class="p-meta">
+                  <div class="p-icon" style="background:var(--amber-50)">☯️</div>
+                  <div class="p-info"><div class="p-name">仙途</div><div class="p-desc">修仙世界中的凡人崛起之路。</div></div>
+                  <span class="badge badge-warning">规划中</span>
+                </div>
+                <div class="p-stats">
+                  <div class="ps"><span class="n">0.5</span><span class="l">万字</span></div>
+                  <div class="ps"><span class="n">2</span><span class="l">章</span></div>
+                  <div class="ps"><span class="n">5</span><span class="l">%</span></div>
+                </div>
+                <div class="progress" style="margin-top:10px"><div class="progress-fill" style="width:5%"></div></div>
+              </div>
+              <div class="card-footer">
+                <span style="font-size:11px; color:var(--text-secondary);">6月22日更新</span>
+                <div style="display:flex; gap:2px;">
+                  <button class="btn btn-sm btn-ghost btn-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button>
+                  <button class="btn btn-sm btn-ghost btn-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
+                  <button class="btn btn-sm btn-ghost btn-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+                </div>
+              </div>
+            </div>
+            <div class="card">
+              <div class="card-body">
+                <div class="p-meta">
+                  <div class="p-icon" style="background:var(--ink-100)">🔍</div>
+                  <div class="p-info"><div class="p-name">迷雾之城</div><div class="p-desc">悬疑推理，在迷雾之城探寻真相。</div></div>
+                  <span class="badge badge-ghost">暂停</span>
+                </div>
+                <div class="p-stats">
+                  <div class="ps"><span class="n">3.2</span><span class="l">万字</span></div>
+                  <div class="ps"><span class="n">15</span><span class="l">章</span></div>
+                  <div class="ps"><span class="n">32</span><span class="l">%</span></div>
+                </div>
+                <div class="progress" style="margin-top:10px"><div class="progress-fill" style="width:32%"></div></div>
+              </div>
+              <div class="card-footer">
+                <span style="font-size:11px; color:var(--text-secondary);">6月20日更新</span>
+                <div style="display:flex; gap:2px;">
+                  <button class="btn btn-sm btn-ghost btn-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button>
+                  <button class="btn btn-sm btn-ghost btn-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg></button>
+                  <button class="btn btn-sm btn-ghost btn-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg></button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tabs + Modal + Chat -->
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap: 24px;">
+          <div class="sec" style="margin-bottom:0;">
+            <h2 class="section-title">标签 & 弹窗</h2>
+            <p class="section-sub">Tab 回归朴素 —— 仅用文字+底线区分</p>
+            <div style="display:flex; gap: 0; border-bottom: 1px solid var(--border); margin-bottom: 16px;">
+              <button style="padding: 8px 16px; font-size: 13px; border:none; background:none; color:var(--accent); font-weight:500; cursor:pointer; border-bottom: 2px solid var(--accent);">故事结构</button>
+              <button style="padding: 8px 16px; font-size: 13px; border:none; background:none; color:var(--text-secondary); cursor:pointer;">角色设计</button>
+              <button style="padding: 8px 16px; font-size: 13px; border:none; background:none; color:var(--text-secondary); cursor:pointer;">世界观</button>
+            </div>
+            <button class="btn btn-primary" onclick="toggleModal()">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 5v14"/><path d="M5 12h14"/></svg>
+              新建项目
+            </button>
+            <div style="margin-top: 14px; display:flex; gap:6px; flex-wrap:wrap;">
+              <span class="tag">三幕剧</span>
+              <span class="tag">英雄之旅</span>
+              <span class="tag">救猫咪</span>
+              <span class="tag">七点结构</span>
+            </div>
+          </div>
+
+          <!-- Chat -->
+          <div class="sec" style="margin-bottom:0;">
+            <h2 class="section-title">对话</h2>
+            <p class="section-sub">暖金气泡、朴素灰边 —— 像写在手稿上的批注</p>
+            <div style="background:var(--surface); border-radius:var(--radius); border:1px solid var(--border); padding: 16px;">
+              <div class="chat right">
+                <div class="chat-av u">你</div>
+                <div class="chat-b u">帮我设计一个反派角色，他曾经是主角的 mentor</div>
+              </div>
+              <div class="chat">
+                <div class="chat-av a">AI</div>
+                <div class="chat-b a">
+                  <div class="skill-card done">
+                    <div class="sc-h">
+                      <span class="sn">character-creation</span>
+                      <span class="st" style="color:var(--green-500)">✅ 完成 2.3s</span>
+                    </div>
+                    <div class="sc-d">已生成角色档案：墨渊</div>
+                  </div>
+                  <strong>墨渊</strong>，曾经的龙族第一剑士，主角的授业恩师。在龙族内战中选择背叛，表面投靠暗影，实则为了从内部瓦解暗影势力。但随着时间推移，他逐渐被暗影力量腐蚀...
+                </div>
+              </div>
+              <div class="chat right">
+                <div class="chat-av u">你</div>
+                <div class="chat-b u">继续展开他的背景故事</div>
+              </div>
+              <div class="chat">
+                <div class="chat-av a">AI</div>
+                <div class="chat-b a">
+                  <div class="skill-card running">
+                    <div class="sc-h">
+                      <span class="sn">character-creation</span>
+                      <span class="st" style="color:var(--amber-400)">⏳ 执行中</span>
+                    </div>
+                    <div class="sc-d">正在生成背景故事...</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Skeleton -->
+        <div class="sec" style="margin-top: 40px;">
+          <h2 class="section-title">骨架屏</h2>
+          <p class="section-sub">数据加载时的占位 —— 替代「加载中...」</p>
+          <div style="display:grid; grid-template-columns:repeat(3,1fr); gap:14px;">
+            <div class="card" style="padding:20px;">
+              <div class="skeleton" style="width:55%; height:14px; margin-bottom:10px;"></div>
+              <div class="skeleton" style="width:75%; height:10px; margin-bottom:6px;"></div>
+              <div class="skeleton" style="width:35%; height:10px; margin-bottom:14px;"></div>
+              <div class="skeleton" style="width:100%; height:3px;"></div>
+            </div>
+            <div class="card" style="padding:20px;">
+              <div class="skeleton" style="width:45%; height:14px; margin-bottom:10px;"></div>
+              <div class="skeleton" style="width:65%; height:10px; margin-bottom:6px;"></div>
+              <div class="skeleton" style="width:40%; height:10px; margin-bottom:14px;"></div>
+              <div class="skeleton" style="width:100%; height:3px;"></div>
+            </div>
+            <div class="card" style="padding:20px;">
+              <div class="skeleton" style="width:50%; height:14px; margin-bottom:10px;"></div>
+              <div class="skeleton" style="width:70%; height:10px; margin-bottom:6px;"></div>
+              <div class="skeleton" style="width:30%; height:10px; margin-bottom:14px;"></div>
+              <div class="skeleton" style="width:100%; height:3px;"></div>
+            </div>
+          </div>
+        </div>
+
+        <div style="padding: 20px 0; font-size: 12px; color: var(--text-secondary); border-top: 1px solid var(--border);">
+          以墨色为骨 · 暖金为韵 · 为写作者打造
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal -->
+<div id="modal" class="modal-overlay" style="display:none;">
+  <div class="modal">
+    <div class="modal-h">
+      <h2>新建项目</h2>
+      <button class="icon-btn" onclick="toggleModal()"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="modal-b">
+      <div class="fg"><label class="fl">作品名称</label><input class="fi" placeholder="输入小说名称"></div>
+      <div class="fg"><label class="fl">简介</label><textarea class="ft" placeholder="简要描述..." rows="3">在遥远的星辰之海，一位少年踏上了寻找失落文明的旅程...</textarea></div>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+        <div class="fg"><label class="fl">类型</label><select class="fs"><option>玄幻</option><option>仙侠</option><option selected>科幻</option></select></div>
+        <div class="fg"><label class="fl">目标</label><select class="fs"><option>5 万字</option><option selected>30 万字</option><option>100 万字</option></select></div>
+      </div>
+    </div>
+    <div class="modal-f">
+      <button class="btn btn-ghost" onclick="toggleModal()">取消</button>
+      <button class="btn btn-primary">创建</button>
+    </div>
+  </div>
+</div>
+
+<script>
+function toggleModal() {
+  const m = document.getElementById('modal');
+  m.style.display = m.style.display === 'none' ? 'flex' : 'none';
+}
+</script>
+</body>
+</html>

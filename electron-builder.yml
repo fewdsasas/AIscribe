@@ -1,0 +1,31 @@
+appId: com.aiscribe.app
+productName: AIscribe
+directories:
+  buildResources: build
+  output: dist
+files:
+  - out/**/*
+  - skills/**/*.md
+  - node_modules/**/*.js
+  - node_modules/**/*.json
+  - node_modules/**/*.node
+  - '!node_modules/**/*.map'
+  - '!node_modules/**/*.ts'
+  - '!node_modules/**/*.md'
+asarUnpack:
+  - "node_modules/sql.js/dist/sql-wasm.wasm"
+win:
+  target:
+    - nsis
+  icon: build/icon.png
+  artifactName: ${productName}-${version}-Setup.${ext}
+mac:
+  target:
+    - dmg
+  icon: build/icon.png
+  artifactName: ${productName}-${version}.${ext}
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true

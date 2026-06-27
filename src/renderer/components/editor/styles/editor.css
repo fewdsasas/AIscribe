@@ -1,0 +1,179 @@
+/* AIscribe Novel Editor Styles — CSS 变量版，支持深色模式 */
+
+.novel-editor {
+  outline: none;
+  min-height: 400px;
+  font-family: 'Noto Serif SC', Georgia, serif;
+  font-size: 16px;
+  line-height: 1.9;
+  color: var(--color-text);
+}
+
+.novel-editor p { margin: 0.4em 0; }
+
+.novel-editor p.is-editor-empty:first-child::before {
+  color: var(--color-text-secondary);
+  content: attr(data-placeholder);
+  float: left; height: 0; pointer-events: none;
+}
+
+.scene-block {
+  position: relative;
+  margin: 1.5em 0;
+  padding: 1em 1em 0.5em;
+  border-left: 3px solid var(--accent-bg);
+  background: var(--color-bg);
+  border-radius: 4px;
+}
+
+.scene-block::before {
+  content: '✦ 场景 ' attr(data-scene-number);
+  display: block;
+  font-family: 'Noto Sans SC', sans-serif;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 0.5em;
+}
+
+.scene-block:hover {
+  border-left-color: var(--accent);
+  background: var(--surface-hover);
+}
+
+.scene-separator {
+  text-align: center;
+  color: var(--ink-300);
+  font-size: 14px;
+  letter-spacing: 4px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.scene-separator:hover { color: var(--accent); }
+
+.character-mention {
+  display: inline;
+  color: var(--accent);
+  background: var(--accent-bg);
+  border-bottom: 1px dashed var(--accent);
+  padding: 0 2px;
+  border-radius: 2px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.character-mention:hover { background: var(--accent-light); }
+
+.bubble-menu {
+  display: flex; gap: 2px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px; padding: 4px;
+  box-shadow: var(--shadow-md);
+}
+
+.bubble-menu button {
+  display: flex; align-items: center; justify-content: center;
+  width: 32px; height: 32px; border: none; background: transparent;
+  border-radius: 4px; cursor: pointer;
+  color: var(--color-text-secondary);
+  font-size: 14px; transition: all 0.15s;
+}
+
+.bubble-menu button:hover {
+  background: var(--surface-hover);
+  color: var(--color-text);
+}
+
+.bubble-menu button.is-active {
+  background: var(--accent-bg);
+  color: var(--accent);
+}
+
+.novel-toolbar {
+  display: flex; align-items: center; gap: 2px;
+  padding: 6px 8px;
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: 8px; flex-wrap: wrap;
+}
+
+.novel-toolbar button {
+  display: flex; align-items: center; justify-content: center;
+  min-width: 32px; height: 32px; padding: 0 6px;
+  border: none; background: transparent; border-radius: 4px;
+  cursor: pointer; color: var(--color-text-secondary);
+  font-size: 13px; transition: all 0.15s; white-space: nowrap;
+}
+
+.novel-toolbar button:hover {
+  background: var(--surface-hover);
+  color: var(--color-text);
+}
+
+.novel-toolbar button.is-active {
+  background: var(--accent-bg);
+  color: var(--accent);
+}
+
+.novel-toolbar .separator {
+  width: 1px; height: 24px;
+  background: var(--color-border);
+  margin: 0 4px;
+}
+
+.novel-toolbar .word-count {
+  margin-left: auto; font-size: 12px;
+  color: var(--color-text-secondary);
+  padding: 0 8px; font-family: 'Noto Sans SC', sans-serif;
+}
+
+.writing-goal {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  padding: 8px 12px; font-size: 12px;
+  color: var(--color-text-secondary);
+  font-family: 'Noto Sans SC', sans-serif;
+}
+
+.writing-goal .progress-bar {
+  flex: 1; height: 4px;
+  background: var(--ink-100);
+  border-radius: 2px; overflow: hidden;
+}
+
+.writing-goal .progress-bar .fill {
+  height: 100%;
+  background: var(--accent);
+  border-radius: 2px;
+  transition: width 0.3s ease;
+}
+
+.writing-goal .progress-bar .fill.complete {
+  background: var(--success);
+}
+
+.novel-editor h1 {
+  font-size: 24px; font-weight: 700; text-align: center;
+  margin: 1em 0 0.5em; color: var(--color-text);
+}
+
+.novel-editor h2 {
+  font-size: 20px; font-weight: 600;
+  margin: 0.8em 0 0.4em; color: var(--color-text);
+}
+
+.novel-editor h3 {
+  font-size: 18px; font-weight: 600;
+  margin: 0.6em 0 0.3em; color: var(--color-text);
+}
+
+.novel-editor ::selection { background: var(--amber-200); }
+
+.novel-editor-container ::-webkit-scrollbar { width: 4px; }
+.novel-editor-container ::-webkit-scrollbar-thumb {
+  background: var(--ink-300);
+  border-radius: 2px;
+}
