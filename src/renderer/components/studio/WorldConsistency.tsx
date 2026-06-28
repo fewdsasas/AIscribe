@@ -86,6 +86,7 @@ export const WorldConsistency: React.FC<WorldConsistencyProps> = ({ items, world
           </div>
           <div style={{ width: 96, height: 3, background: 'var(--ink-100)', borderRadius: 2, overflow: 'hidden' }}>
             <div
+              data-testid="progress-bar"
               style={{
                 height: '100%',
                 borderRadius: 2,

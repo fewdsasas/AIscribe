@@ -9,7 +9,7 @@ import { projectService } from './services/projectService'
 
 // Lazy-loaded views with retry on chunk load failure (max 3 retries)
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-function lazyWithRetry<T extends React.ComponentType<any>>(
+export function lazyWithRetry<T extends React.ComponentType<any>>(
   factory: () => Promise<{ default: T }>,
   retries = 3
 ): React.LazyExoticComponent<T> {

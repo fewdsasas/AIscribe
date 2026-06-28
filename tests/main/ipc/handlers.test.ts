@@ -108,8 +108,14 @@ describe('IPC Handlers', () => {
       const handler = getRegisteredHandler('novel:create')
       expect(handler).toBeDefined()
 
+      const project = await getRegisteredHandler('project:create')(null, {
+        name: 'Novel Create Project',
+        description: '',
+        genre: 'fantasy'
+      })
+
       const result = await handler(null, {
-        projectId: testId(),
+        projectId: project.id,
         title: 'IPC Test Novel',
         author: 'Test Author'
       })
@@ -118,9 +124,26 @@ describe('IPC Handlers', () => {
       expect(result.id).toBeDefined()
     })
 
+    it('should reject non-object data', async () => {
+      const handler = getRegisteredHandler('novel:create')
+      await expect(handler(null, null)).rejects.toThrow('小说数据 格式无效')
+    })
+
     it('should reject empty novel title', async () => {
       const handler = getRegisteredHandler('novel:create')
-      await expect(handler(null, { projectId: testId(), title: '' })).rejects.toThrow('小说标题 不能为空')
+      await expect(handler(null, { projectId: '00000000-0000-0000-0000-000000000001', title: '' })).rejects.toThrow(
+        '小说标题 不能为空'
+      )
+    })
+
+    it('should reject missing project ID', async () => {
+      const handler = getRegisteredHandler('novel:create')
+      await expect(handler(null, { title: 'No Project' })).rejects.toThrow('项目ID 不能为空')
+    })
+
+    it('should reject invalid project ID', async () => {
+      const handler = getRegisteredHandler('novel:create')
+      await expect(handler(null, { projectId: 'invalid', title: 'Bad Project' })).rejects.toThrow('项目ID 格式无效')
     })
   })
 
@@ -128,7 +151,7 @@ describe('IPC Handlers', () => {
     it('should create a chapter via IPC', async () => {
       const novelHandler = getRegisteredHandler('novel:create')
       const novel = await novelHandler(null, {
-        projectId: testId(),
+        projectId: '00000000-0000-0000-0000-000000000001',
         title: 'Chapter Test Novel'
       })
 
@@ -141,6 +164,21 @@ describe('IPC Handlers', () => {
       expect(result).toBeDefined()
       expect(result.title).toBe('第一章')
       expect(result.id).toBeDefined()
+    })
+
+    it('should reject missing novel ID', async () => {
+      const handler = getRegisteredHandler('chapter:create')
+      await expect(handler(null, { title: 'No Novel' })).rejects.toThrow('小说ID 不能为空')
+    })
+
+    it('should reject non-object data', async () => {
+      const handler = getRegisteredHandler('chapter:create')
+      await expect(handler(null, null)).rejects.toThrow('章节数据 格式无效')
+    })
+
+    it('should reject invalid novel ID', async () => {
+      const handler = getRegisteredHandler('chapter:create')
+      await expect(handler(null, { novelId: 'invalid', title: 'Bad Novel' })).rejects.toThrow('小说ID 格式无效')
     })
   })
 
@@ -162,6 +200,13 @@ describe('IPC Handlers', () => {
     it('should reject invalid data', async () => {
       const handler = getRegisteredHandler('project:update')
       await expect(handler(null, '00000000-0000-0000-0000-000000000001', null)).rejects.toThrow('项目更新数据 格式无效')
+    })
+
+    it('should reject empty project name', async () => {
+      const handler = getRegisteredHandler('project:update')
+      await expect(handler(null, '00000000-0000-0000-0000-000000000001', { name: '' })).rejects.toThrow(
+        '项目名称 不能为空'
+      )
     })
   })
 
@@ -212,7 +257,11 @@ describe('IPC Handlers', () => {
   describe('novel:get', () => {
     it('should get a novel by ID', async () => {
       const createHandler = getRegisteredHandler('novel:create')
-      const novel = await createHandler(null, { projectId: testId(), title: 'Get Novel', author: 'Author' })
+      const novel = await createHandler(null, {
+        projectId: '00000000-0000-0000-0000-000000000001',
+        title: 'Get Novel',
+        author: 'Author'
+      })
 
       const handler = getRegisteredHandler('novel:get')
       const result = await handler(null, novel.id)
@@ -248,7 +297,10 @@ describe('IPC Handlers', () => {
   describe('chapter:list', () => {
     it('should list chapters for a novel', async () => {
       const novelHandler = getRegisteredHandler('novel:create')
-      const novel = await novelHandler(null, { projectId: testId(), title: 'List Test Novel' })
+      const novel = await novelHandler(null, {
+        projectId: '00000000-0000-0000-0000-000000000001',
+        title: 'List Test Novel'
+      })
 
       const chapterHandler = getRegisteredHandler('chapter:create')
       await chapterHandler(null, { novelId: novel.id, title: 'Chapter 1', content: '' })
@@ -265,7 +317,10 @@ describe('IPC Handlers', () => {
   describe('chapter:get', () => {
     it('should get a chapter by ID', async () => {
       const novelHandler = getRegisteredHandler('novel:create')
-      const novel = await novelHandler(null, { projectId: testId(), title: 'Chapter Get Novel' })
+      const novel = await novelHandler(null, {
+        projectId: '00000000-0000-0000-0000-000000000001',
+        title: 'Chapter Get Novel'
+      })
 
       const createHandler = getRegisteredHandler('chapter:create')
       const chapter = await createHandler(null, { novelId: novel.id, title: 'Test Chapter', content: 'Content' })
@@ -287,7 +342,10 @@ describe('IPC Handlers', () => {
   describe('chapter:update', () => {
     it('should update a chapter title', async () => {
       const novelHandler = getRegisteredHandler('novel:create')
-      const novel = await novelHandler(null, { projectId: testId(), title: 'Chapter Update Novel' })
+      const novel = await novelHandler(null, {
+        projectId: '00000000-0000-0000-0000-000000000001',
+        title: 'Chapter Update Novel'
+      })
 
       const createHandler = getRegisteredHandler('chapter:create')
       const chapter = await createHandler(null, { novelId: novel.id, title: 'Original Title', content: '' })
@@ -300,13 +358,36 @@ describe('IPC Handlers', () => {
       const updated = await getHandler(null, chapter.id)
       expect(updated.title).toBe('Updated Title')
     })
+
+    it('should reject empty chapter title', async () => {
+      const handler = getRegisteredHandler('chapter:update')
+      await expect(handler(null, '00000000-0000-0000-0000-000000000001', { title: '' })).rejects.toThrow(
+        '章节标题 不能为空'
+      )
+    })
+
+    it('should reject non-object update data', async () => {
+      const handler = getRegisteredHandler('chapter:update')
+      await expect(handler(null, '00000000-0000-0000-0000-000000000001', null)).rejects.toThrow('章节更新数据 格式无效')
+    })
+
+    it('should reject invalid chapter ID', async () => {
+      const handler = getRegisteredHandler('chapter:update')
+      await expect(handler(null, 'invalid-id', { title: 'Title' })).rejects.toThrow('章节ID 格式无效')
+    })
   })
 
   describe('chapter:counts', () => {
     it('should return chapter counts for novel IDs', async () => {
       const novelHandler = getRegisteredHandler('novel:create')
-      const novel1 = await novelHandler(null, { projectId: testId(), title: 'Counts Novel 1' })
-      const novel2 = await novelHandler(null, { projectId: testId(), title: 'Counts Novel 2' })
+      const novel1 = await novelHandler(null, {
+        projectId: '00000000-0000-0000-0000-000000000001',
+        title: 'Counts Novel 1'
+      })
+      const novel2 = await novelHandler(null, {
+        projectId: '00000000-0000-0000-0000-000000000001',
+        title: 'Counts Novel 2'
+      })
 
       const chapterHandler = getRegisteredHandler('chapter:create')
       await chapterHandler(null, { novelId: novel1.id, title: 'Ch1', content: '' })
@@ -324,6 +405,11 @@ describe('IPC Handlers', () => {
       const handler = getRegisteredHandler('chapter:counts')
       const result = await handler(null, [])
       expect(result).toEqual({})
+    })
+
+    it('should reject non-array input', async () => {
+      const handler = getRegisteredHandler('chapter:counts')
+      await expect(handler(null, 'not-array')).rejects.toThrow('novelIds 必须为数组')
     })
   })
 })

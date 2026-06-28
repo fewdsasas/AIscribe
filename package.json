@@ -18,6 +18,9 @@
     "test:stress": "vitest run tests/integration/stress-db.test.ts tests/integration/stress-llm.test.ts tests/integration/stress-ipc.test.ts",
     "test:integration": "vitest run tests/integration/ --exclude tests/integration/stress-*.test.ts",
     "test:coverage": "vitest run --coverage",
+    "e2e": "playwright test",
+    "e2e:headed": "playwright test --headed",
+    "e2e:build": "npm run build && playwright test",
     "typecheck": "tsc --noEmit",
     "lint": "eslint src tests --report-unused-disable-directives --max-warnings=0",
     "lint:fix": "eslint src tests --fix",
@@ -29,6 +32,7 @@
     "react-dom": "^18.3.1",
     "sql.js": "^1.11.0",
     "uuid": "^11.1.0",
+    "yaml": "^2.9.0",
     "zustand": "^5.0.0"
   },
   "devDependencies": {

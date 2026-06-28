@@ -189,4 +189,116 @@ describe('SettingsView', () => {
       expect(screen.queryByTestId('confirm-dialog')).not.toBeInTheDocument()
     })
   })
+
+  it('should handle data export with no projects', async () => {
+    mockedProjectService.list.mockResolvedValue([])
+    await act(async () => {
+      render(<SettingsView />)
+    })
+
+    const dataTab = screen.getByRole('button', { name: /数据管理/ })
+    await act(async () => {
+      fireEvent.click(dataTab)
+    })
+
+    const exportButton = screen.getByRole('button', { name: /导出所有数据/ })
+    await act(async () => {
+      fireEvent.click(exportButton)
+    })
+
+    expect(mockedProjectService.list).toHaveBeenCalled()
+  })
+
+  it('should handle data export error', async () => {
+    mockedProjectService.list.mockRejectedValue(new Error('list error'))
+    await act(async () => {
+      render(<SettingsView />)
+    })
+
+    const dataTab = screen.getByRole('button', { name: /数据管理/ })
+    await act(async () => {
+      fireEvent.click(dataTab)
+    })
+
+    const exportButton = screen.getByRole('button', { name: /导出所有数据/ })
+    await act(async () => {
+      fireEvent.click(exportButton)
+    })
+
+    await waitFor(() => {
+      expect(mockedProjectService.list).toHaveBeenCalled()
+    })
+  })
+
+  it('should handle data import file selection', async () => {
+    await act(async () => {
+      render(<SettingsView />)
+    })
+
+    const dataTab = screen.getByRole('button', { name: /数据管理/ })
+    await act(async () => {
+      fireEvent.click(dataTab)
+    })
+
+    const importButton = screen.getByRole('button', { name: /导入数据/ })
+    await act(async () => {
+      fireEvent.click(importButton)
+    })
+
+    // Should not throw
+    expect(importButton).toBeInTheDocument()
+  })
+
+  it('should confirm reset and clear localStorage', async () => {
+    window.localStorage.setItem('test-key', 'test-value')
+
+    await act(async () => {
+      render(<SettingsView />)
+    })
+
+    const dataTab = screen.getByRole('button', { name: /数据管理/ })
+    await act(async () => {
+      fireEvent.click(dataTab)
+    })
+
+    await act(async () => {
+      fireEvent.click(screen.getByRole('button', { name: /重置所有数据/ }))
+    })
+
+    await waitFor(() => {
+      expect(screen.getByTestId('confirm-dialog')).toBeInTheDocument()
+    })
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('确认'))
+    })
+
+    expect(window.localStorage.getItem('test-key')).toBeNull()
+  })
+
+  it('should switch theme when theme option clicked', async () => {
+    const setThemeMock = vi.fn()
+    vi.doMock('@renderer/hooks/useTheme', () => ({
+      useTheme: () => ({ theme: 'light', setTheme: setThemeMock }),
+      THEMES: [
+        { id: 'light', label: '浅色', icon: '☀️' },
+        { id: 'dark', label: '深色', icon: '🌙' }
+      ]
+    }))
+
+    await act(async () => {
+      render(<SettingsView />)
+    })
+
+    const themeTab = screen.getByRole('button', { name: /主题/ })
+    await act(async () => {
+      fireEvent.click(themeTab)
+    })
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('深色'))
+    })
+
+    vi.doUnmock('@renderer/hooks/useTheme')
+  })
 })

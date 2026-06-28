@@ -1,4 +1,5 @@
 import path from 'path'
+import crypto from 'crypto'
 import { app } from 'electron'
 import { Database } from '../memory/database'
 import { LLMProviderFactory } from '../engine/llm-provider-factory'
@@ -124,6 +125,10 @@ class LLMProviderAdapter implements ILLMProvider {
     return this.provider.chat(request, provider)
   }
 
+  testConnection(config: Parameters<ILLMProvider['testConnection']>[0]): ReturnType<ILLMProvider['testConnection']> {
+    return this.provider.testConnection(config)
+  }
+
   chatStream(
     request: Parameters<ILLMProvider['chatStream']>[0],
     callbacks: Parameters<ILLMProvider['chatStream']>[1],
@@ -246,7 +251,8 @@ export async function createDefaultServiceRegistry(): Promise<ServiceRegistry> {
     }
     if (token === LEARNING_ENGINE_TOKEN) {
       const db = await getDbInstance()
-      const engine = LearningEngine.create(db)
+      const writerId = crypto.createHash('sha256').update(app.getPath('userData')).digest('hex').slice(0, 32)
+      const engine = LearningEngine.create(db, writerId)
       engine.setSaveProfileCallback(async profile => {
         try {
           db.saveWriterModel(profile)

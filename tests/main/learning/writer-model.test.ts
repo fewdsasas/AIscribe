@@ -3,7 +3,7 @@ import { WriterModelUpdater } from '../../../src/main/learning/writer-model'
 import type { TrajectoryEntry } from '../../../src/shared/types'
 
 describe('WriterModelUpdater', () => {
-  const updater = new WriterModelUpdater()
+  const updater = new WriterModelUpdater('test-writer-id')
 
   const sampleTrajs: TrajectoryEntry[] = [
     {
@@ -79,6 +79,12 @@ describe('WriterModelUpdater', () => {
     expect(model.writerId).toBeTruthy()
     expect(model.frequentSkills).toBeDefined()
     expect(model.frequentSkills.length).toBeGreaterThan(0)
+  })
+
+  it('should use injected writerId instead of projectId', () => {
+    const model = updater.buildModel(sampleTrajs)
+    expect(model.writerId).toBe('test-writer-id')
+    expect(model.writerId).not.toBe(sampleTrajs[0].projectId)
   })
 
   it('should identify most used skills', () => {

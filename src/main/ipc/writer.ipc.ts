@@ -1,5 +1,4 @@
 import type { IpcMain } from 'electron'
-import { IPC_CHANNELS } from '../../shared/types/ipc'
 import { DATABASE_TOKEN, requireId, requireNonEmptyString, requireObject, wrap } from './index'
 import type { ServiceRegistry } from '../di'
 import type { IDatabase } from '../di'
@@ -7,7 +6,7 @@ import type { WriterProfile } from '../../shared/types'
 
 export function registerWriterHandlers(ipcMain: IpcMain, services: ServiceRegistry): void {
   ipcMain.handle(
-    IPC_CHANNELS.WRITER_MODEL_GET,
+    'writer-model:get',
     wrap(async (writerId: string) => {
       requireId(writerId, '作者ID')
       const d = await services.resolveAsync<IDatabase>(DATABASE_TOKEN)
@@ -15,7 +14,7 @@ export function registerWriterHandlers(ipcMain: IpcMain, services: ServiceRegist
     })
   )
   ipcMain.handle(
-    IPC_CHANNELS.WRITER_MODEL_SAVE,
+    'writer-model:save',
     wrap(async (profile: WriterProfile) => {
       requireObject(profile, '作者模型数据')
       requireNonEmptyString(profile.writerId, '作者ID')

@@ -33,6 +33,37 @@ describe('useIPCQuery', () => {
     expect(result.current.data).toBeUndefined()
   })
 
+  it('should wrap non-Error fetch rejection', async () => {
+    const fetcher = vi.fn().mockRejectedValue('string error')
+    const { result } = renderHook(() => useIPCQuery(fetcher, []))
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false)
+    })
+
+    expect(result.current.error).toBeInstanceOf(Error)
+    expect(result.current.error?.message).toBe('string error')
+  })
+
+  it('should ignore fetch result after unmount', async () => {
+    let resolveFetcher: (value: string) => void = () => {}
+    const fetcher = vi.fn().mockImplementation(
+      () =>
+        new Promise<string>(resolve => {
+          resolveFetcher = resolve
+        })
+    )
+    const { result, unmount } = renderHook(() => useIPCQuery(fetcher, []))
+
+    expect(result.current.loading).toBe(true)
+    unmount()
+    resolveFetcher('late result')
+
+    await waitFor(() => {
+      expect(fetcher).toHaveBeenCalledTimes(1)
+    })
+  })
+
   it('should refetch data', async () => {
     const fetcher = vi.fn().mockResolvedValueOnce('first').mockResolvedValueOnce('second')
     const { result } = renderHook(() => useIPCQuery(fetcher, []))
@@ -78,5 +109,34 @@ describe('useIPCMutation', () => {
       expect(result.current.error).toEqual(error)
     })
     expect(result.current.loading).toBe(false)
+  })
+
+  it('should wrap non-Error mutation rejection', async () => {
+    const mutator = vi.fn().mockRejectedValue('string error')
+    const { result } = renderHook(() => useIPCMutation<string, { name: string }>(mutator))
+
+    await expect(result.current.mutate({ name: 'test' })).rejects.toThrow('string error')
+
+    await waitFor(() => {
+      expect(result.current.error).toBeInstanceOf(Error)
+      expect(result.current.error?.message).toBe('string error')
+    })
+  })
+
+  it('should ignore mutation result after unmount', async () => {
+    let resolveMutator: (value: string) => void = () => {}
+    const mutator = vi.fn().mockImplementation(
+      () =>
+        new Promise<string>(resolve => {
+          resolveMutator = resolve
+        })
+    )
+    const { result, unmount } = renderHook(() => useIPCMutation<string, { name: string }>(mutator))
+
+    const mutatePromise = result.current.mutate({ name: 'test' })
+    unmount()
+    resolveMutator('late result')
+
+    await expect(mutatePromise).resolves.toBe('late result')
   })
 })

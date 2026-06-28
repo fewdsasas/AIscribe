@@ -12,7 +12,16 @@ vi.mock('../../../src/main/utils/logger', () => ({
   logger: { error: vi.fn(), warn: vi.fn(), info: vi.fn() }
 }))
 
-import { requireId, requireNonEmptyString, requireObject, sanitizeError, wrap } from '../../../src/main/ipc/index'
+import {
+  requireEnum,
+  requireId,
+  requireNonEmptyString,
+  requireNonNegativeNumber,
+  requireNumber,
+  requireObject,
+  sanitizeError,
+  wrap
+} from '../../../src/main/ipc/index'
 import { MAX_STRING_LENGTH } from '../../../src/shared/constants'
 import { logger } from '../../../src/main/utils/logger'
 
@@ -207,5 +216,52 @@ describe('requireObject', () => {
 
   it('should accept an object with properties', () => {
     expect(() => requireObject({ name: 'test', value: 123 }, '数据')).not.toThrow()
+  })
+})
+
+describe('requireEnum', () => {
+  const allowed = ['a', 'b', 'c'] as const
+
+  it('should reject values not in allowed list', () => {
+    expect(() => requireEnum('d', allowed, '类型')).toThrow('类型 必须是以下值之一: a, b, c')
+  })
+
+  it('should reject non-string values', () => {
+    expect(() => requireEnum(123, allowed, '类型')).toThrow('类型 必须是以下值之一: a, b, c')
+    expect(() => requireEnum(null, allowed, '类型')).toThrow('类型 必须是以下值之一: a, b, c')
+  })
+
+  it('should accept a value in allowed list', () => {
+    expect(() => requireEnum('b', allowed, '类型')).not.toThrow()
+  })
+})
+
+describe('requireNumber', () => {
+  it('should reject non-number values', () => {
+    expect(() => requireNumber('123', '时长')).toThrow('时长 必须为数字')
+    expect(() => requireNumber(null, '时长')).toThrow('时长 必须为数字')
+  })
+
+  it('should reject NaN', () => {
+    expect(() => requireNumber(NaN, '时长')).toThrow('时长 必须为数字')
+  })
+
+  it('should accept a valid number', () => {
+    expect(() => requireNumber(123, '时长')).not.toThrow()
+    expect(() => requireNumber(0, '时长')).not.toThrow()
+  })
+})
+
+describe('requireNonNegativeNumber', () => {
+  it('should reject negative numbers', () => {
+    expect(() => requireNonNegativeNumber(-1, '时长')).toThrow('时长 不能为负数')
+  })
+
+  it('should accept zero', () => {
+    expect(() => requireNonNegativeNumber(0, '时长')).not.toThrow()
+  })
+
+  it('should accept positive numbers', () => {
+    expect(() => requireNonNegativeNumber(100, '时长')).not.toThrow()
   })
 })

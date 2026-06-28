@@ -81,4 +81,46 @@ describe('PlotStructureRepository', () => {
     const found = db.plotStructures.getByNovel('non-existent')
     expect(found).toBeNull()
   })
+
+  it('should reject plot structure with missing chapter references', () => {
+    const projectId = testId()
+    const novelId = testId()
+    db.createProject({
+      id: projectId,
+      name: 'Plot Test',
+      description: '',
+      genre: 'fantasy',
+      status: 'planning',
+      wordCount: 0
+    })
+    db.createNovel({
+      id: novelId,
+      projectId,
+      title: 'Plot Novel',
+      author: '',
+      synopsis: '',
+      genre: 'fantasy',
+      tags: [],
+      targetAudience: ''
+    })
+
+    expect(() =>
+      db.plotStructures.save({
+        novelId,
+        framework: 'three_act',
+        beats: [
+          {
+            id: 'b1',
+            name: 'Act 1',
+            description: '',
+            sortOrder: 1,
+            chapterIds: ['non-existent-chapter'],
+            emotionalIntensity: 5,
+            status: 'planned'
+          }
+        ],
+        notes: ''
+      })
+    ).toThrow('情节 beat 引用了不存在的章节')
+  })
 })

@@ -330,6 +330,8 @@ export type SkillCategory =
 
 export type LLMProvider = 'openai' | 'claude' | 'mimo' | 'wenxin' | 'tongyi' | 'custom'
 
+export type LLMCustomProtocol = 'openai' | 'anthropic'
+
 export interface LLMConfig {
   provider: LLMProvider
   apiKey: string
@@ -337,6 +339,7 @@ export interface LLMConfig {
   baseUrl?: string
   temperature?: number
   maxTokens?: number
+  customProtocol?: LLMCustomProtocol
 }
 
 export interface LLMRequest {

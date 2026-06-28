@@ -97,6 +97,8 @@ export interface IDatabase {
     getByProject(projectId: string, limit?: number): TrajectoryEntry[]
     getBySkill(skillId: string, limit?: number): TrajectoryEntry[]
     getBySession(sessionId: string): TrajectoryEntry[]
+    countByProject(projectId: string): number
+    getLastActiveByProject(projectId: string): string | null
     detectPatterns(projectId: string): { skillId: string; count: number; ratio: number }[]
     searchMemory(projectId: string, query: string, limit?: number): TrajectoryEntry[]
   }
@@ -106,6 +108,7 @@ export interface ILLMProvider {
   configure(config: LLMConfig): void
   resetConfig(): void
   chat(request: LLMRequest, provider?: LLMProviderType): Promise<LLMResponse>
+  testConnection(config: LLMConfig): Promise<boolean>
   chatStream(
     request: LLMRequest,
     callbacks: {

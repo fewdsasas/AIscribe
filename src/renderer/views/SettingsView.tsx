@@ -25,8 +25,11 @@ export const SettingsView: React.FC = () => {
       const a = document.createElement('a')
       a.href = url
       a.download = `aiscribe-backup-${new Date().toISOString().slice(0, 10)}.json`
+      document.body.appendChild(a)
       a.click()
+      document.body.removeChild(a)
       URL.revokeObjectURL(url)
+      showToast('导出成功', 'success')
     } catch (err) {
       logger.error('导出数据失败:', err)
       showToast('导出失败，请重试', 'error')

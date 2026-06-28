@@ -86,4 +86,95 @@ describe('ProjectDialog', () => {
       expect(mockedProjectService.create).not.toHaveBeenCalled()
     })
   })
+
+  it('should update genre and target word count', () => {
+    render(<ProjectDialog open={true} onClose={vi.fn()} onCreated={vi.fn()} />)
+
+    const [genreSelect, targetSelect] = screen.getAllByRole('combobox')
+
+    fireEvent.change(genreSelect, { target: { value: '科幻' } })
+    fireEvent.change(targetSelect, { target: { value: '300000' } })
+
+    expect((genreSelect as HTMLSelectElement).value).toBe('科幻')
+    expect((targetSelect as HTMLSelectElement).value).toBe('300000')
+  })
+
+  it('should show error when project creation returns no id', async () => {
+    mockedProjectService.create.mockResolvedValue({ id: '', name: 'Bad' } as any)
+
+    render(<ProjectDialog open={true} onClose={vi.fn()} onCreated={vi.fn()} />)
+
+    fireEvent.change(screen.getByPlaceholderText('输入小说名称'), { target: { value: 'Bad' } })
+    fireEvent.click(screen.getByText('创建项目'))
+
+    await waitFor(() => {
+      expect(screen.getByText('创建失败，请重试')).toBeInTheDocument()
+    })
+  })
+
+  it('should show error when novel creation fails', async () => {
+    mockedNovelService.create.mockResolvedValue(null as any)
+
+    render(<ProjectDialog open={true} onClose={vi.fn()} onCreated={vi.fn()} />)
+
+    fireEvent.change(screen.getByPlaceholderText('输入小说名称'), { target: { value: 'My Novel' } })
+    fireEvent.click(screen.getByText('创建项目'))
+
+    await waitFor(() => {
+      expect(screen.getByText('小说创建失败，项目可能已部分创建')).toBeInTheDocument()
+    })
+  })
+
+  it('should still call onCreated when chapter creation fails', async () => {
+    mockedChapterService.create.mockRejectedValue(new Error('chapter error'))
+    const onCreated = vi.fn()
+
+    render(<ProjectDialog open={true} onClose={vi.fn()} onCreated={onCreated} />)
+
+    fireEvent.change(screen.getByPlaceholderText('输入小说名称'), { target: { value: 'My Novel' } })
+    fireEvent.click(screen.getByText('创建项目'))
+
+    await waitFor(() => {
+      expect(onCreated).toHaveBeenCalledWith('proj-1')
+    })
+  })
+
+  it('should show error when project creation throws', async () => {
+    mockedProjectService.create.mockRejectedValue(new Error('create error'))
+
+    render(<ProjectDialog open={true} onClose={vi.fn()} onCreated={vi.fn()} />)
+
+    fireEvent.change(screen.getByPlaceholderText('输入小说名称'), { target: { value: 'My Novel' } })
+    fireEvent.click(screen.getByText('创建项目'))
+
+    await waitFor(() => {
+      expect(screen.getByText('创建失败: create error')).toBeInTheDocument()
+    })
+  })
+
+  it('should not close when creating', () => {
+    mockedProjectService.create.mockImplementation(() => new Promise(() => {}))
+    const onClose = vi.fn()
+
+    render(<ProjectDialog open={true} onClose={onClose} onCreated={vi.fn()} />)
+
+    fireEvent.change(screen.getByPlaceholderText('输入小说名称'), { target: { value: 'My Novel' } })
+    fireEvent.click(screen.getByText('创建项目'))
+
+    fireEvent.click(screen.getByText('✕'))
+    expect(onClose).not.toHaveBeenCalled()
+  })
+
+  it('should not close backdrop when creating', () => {
+    mockedProjectService.create.mockImplementation(() => new Promise(() => {}))
+    const onClose = vi.fn()
+
+    const { container } = render(<ProjectDialog open={true} onClose={onClose} onCreated={vi.fn()} />)
+
+    fireEvent.change(screen.getByPlaceholderText('输入小说名称'), { target: { value: 'My Novel' } })
+    fireEvent.click(screen.getByText('创建项目'))
+
+    fireEvent.click(container.firstChild as HTMLElement)
+    expect(onClose).not.toHaveBeenCalled()
+  })
 })

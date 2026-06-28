@@ -3,7 +3,10 @@
 import { describe, expect, it } from 'vitest'
 import { Editor } from '@tiptap/core'
 import StarterKit from '@tiptap/starter-kit'
-import { NovelStructureExtension } from '../../../src/renderer/components/editor/extensions/NovelStructure'
+import {
+  insertSceneBlockFromInputRule,
+  NovelStructureExtension
+} from '../../../src/renderer/components/editor/extensions/NovelStructure'
 
 describe('NovelStructureExtension', () => {
   it('should have correct name', () => {
@@ -101,6 +104,30 @@ describe('NovelStructureExtension', () => {
       if (!sceneBlock) throw new Error('sceneBlock not found')
       expect(sceneBlock.type).toBe('sceneBlock')
       expect(sceneBlock.attrs?.sceneNumber).toBe(1)
+
+      editor.destroy()
+    })
+
+    it('should convert --- followed by space into a sceneBlock via input rule handler', () => {
+      const editor = new Editor({
+        extensions: [StarterKit, NovelStructureExtension]
+      })
+
+      const schema = editor.schema
+      const doc = schema.node('doc', {}, [schema.node('paragraph', {}, [schema.text('--- ')])])
+      const state = editor.view.state.apply(
+        editor.view.state.tr.replaceWith(0, editor.view.state.doc.content.size, doc)
+      )
+      const storage = { sceneCounter: 0 }
+      const tr = insertSceneBlockFromInputRule(state, { from: 1, to: 5 }, schema.nodes.sceneBlock, storage)
+
+      const json = tr.doc.toJSON()
+      const sceneBlock = json.content?.find((n: { type: string }) => n.type === 'sceneBlock')
+      expect(sceneBlock).toBeDefined()
+      if (!sceneBlock) throw new Error('sceneBlock not found')
+      expect(sceneBlock.type).toBe('sceneBlock')
+      expect(sceneBlock.attrs?.sceneNumber).toBe(1)
+      expect(sceneBlock.content?.[0]?.type).toBe('paragraph')
 
       editor.destroy()
     })

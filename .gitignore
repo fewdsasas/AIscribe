@@ -20,3 +20,9 @@ Thumbs.db
 .vscode/
 .idea/
 coverage/
+coverage-report.json
+coverage-summary.json
+coverage-text.txt
+playwright-report/
+test-results/
+.trae/

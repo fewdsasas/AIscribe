@@ -59,6 +59,31 @@ describe('LearningEngine', () => {
         /* ignore */
       }
     })
+
+    it('should inject custom writerId into profile', async () => {
+      const newDbPath = path.join(testDir, 'learning-engine-writer.db')
+      const newDb = await Database.create(newDbPath)
+      const newEngine = LearningEngine.create(newDb, 'custom-writer-id')
+
+      await newEngine.recordInteraction({
+        projectId: 'writer-project',
+        sessionId: 's1',
+        query: 'q',
+        response: 'r',
+        duration: 100
+      })
+
+      const analysis = await newEngine.analyzeProject('writer-project')
+      expect(analysis.profile.writerId).toBe('custom-writer-id')
+
+      newEngine.close()
+      newDb.close()
+      try {
+        fs.unlinkSync(newDbPath)
+      } catch {
+        /* ignore */
+      }
+    })
   })
 
   describe('getRecorder', () => {
@@ -164,6 +189,28 @@ describe('LearningEngine', () => {
       expect(summary.totalInteractions).toBe(0)
       expect(summary.topSkills).toEqual([])
       expect(summary.lastActive).toBe('从未使用')
+    })
+
+    it('should report accurate totalInteractions and lastActive', async () => {
+      const projectId = 'project-summary-accuracy'
+      await engine.recordInteraction({
+        projectId,
+        sessionId: 's1',
+        query: 'q1',
+        response: 'r1',
+        duration: 100
+      })
+      await engine.recordInteraction({
+        projectId,
+        sessionId: 's2',
+        query: 'q2',
+        response: 'r2',
+        duration: 200
+      })
+
+      const summary = engine.getProjectSummary(projectId)
+      expect(summary.totalInteractions).toBe(2)
+      expect(summary.lastActive).not.toBe('从未使用')
     })
   })
 })

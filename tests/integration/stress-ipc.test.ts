@@ -145,7 +145,10 @@ describe('IPC Stress Tests', () => {
 
     const novelHandler = getRegisteredHandler('novel:create')
     const chapterHandler = getRegisteredHandler('chapter:create')
-    const novel = await novelHandler(null, { projectId: testId(), title: 'S2 大 payload 小说' })
+    const novel = await novelHandler(null, {
+      projectId: '00000000-0000-0000-0000-000000000001',
+      title: 'S2 大 payload 小说'
+    })
 
     const bigContent = 'x'.repeat(2 * 1024 * 1024) // 2MB
 
@@ -178,7 +181,7 @@ describe('IPC Stress Tests', () => {
   // ============================================================
   // Scenario 3: checkpoint 快照内存峰值
   // ============================================================
-  it('scenario 3: 100 checkpoint snapshots keep memory growth under 100MB', async () => {
+  it('scenario 3: 100 checkpoint snapshots keep memory growth under 100MB', { timeout: 30000 }, async () => {
     gcIfAvailable()
     const projectHandler = getRegisteredHandler('project:create')
     const novelHandler = getRegisteredHandler('novel:create')

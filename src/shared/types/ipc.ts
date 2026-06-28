@@ -1,76 +1,3 @@
-export const IPC_CHANNELS = {
-  PROJECT_CREATE: 'project:create',
-  PROJECT_LIST: 'project:list',
-  PROJECT_DASHBOARD_STATS: 'project:dashboard-stats',
-  PROJECT_GET: 'project:get',
-  PROJECT_UPDATE: 'project:update',
-  PROJECT_DELETE: 'project:delete',
-
-  NOVEL_CREATE: 'novel:create',
-  NOVEL_GET: 'novel:get',
-  NOVEL_GET_BY_PROJECT: 'novel:get-by-project',
-
-  CHAPTER_CREATE: 'chapter:create',
-  CHAPTER_LIST: 'chapter:list',
-  CHAPTER_LIST_WITH_CONTENT: 'chapter:list-with-content',
-  CHAPTER_GET: 'chapter:get',
-  CHAPTER_UPDATE: 'chapter:update',
-  CHAPTER_COUNTS: 'chapter:counts',
-
-  CHARACTER_CREATE: 'character:create',
-  CHARACTER_LIST: 'character:list',
-
-  PLOT_STRUCTURE_GET_BY_NOVEL: 'plot-structure:get-by-novel',
-  PLOT_STRUCTURE_SAVE: 'plot-structure:save',
-
-  WORLD_GET_BY_NOVEL: 'world:get-by-novel',
-  WORLD_SAVE: 'world:save',
-
-  OUTLINE_GET: 'outline:get',
-  OUTLINE_SAVE: 'outline:save',
-
-  CHECKPOINT_CREATE: 'checkpoint:create',
-  CHECKPOINT_LIST: 'checkpoint:list',
-  CHECKPOINT_RESTORE: 'checkpoint:restore',
-
-  SESSION_CREATE: 'session:create',
-  SESSION_LIST: 'session:list',
-
-  SKILL_LIST: 'skill:list',
-  SKILL_GET: 'skill:get',
-  SKILL_INVOKE: 'skill:invoke',
-
-  LEARNING_RECORD: 'learning:record',
-  LEARNING_ANALYZE: 'learning:analyze',
-  LEARNING_SUMMARY: 'learning:summary',
-  MEMORY_SEARCH: 'memory:search',
-
-  WRITER_MODEL_GET: 'writer-model:get',
-  WRITER_MODEL_SAVE: 'writer-model:save',
-
-  LLM_CHAT: 'llm:chat',
-  LLM_CHAT_STREAM: 'llm:chat-stream',
-  LLM_CANCEL_STREAM: 'llm:cancel-stream',
-  LLM_CHUNK: 'llm:chunk',
-  LLM_DONE: 'llm:done',
-  LLM_ERROR: 'llm:error',
-  LLM_CONFIG: 'llm:config',
-  LLM_IS_CONFIGURED: 'llm:is-configured',
-  LLM_CONFIG_META: 'llm:config-meta',
-
-  DB_TABLES: 'db:tables',
-
-  EXPORT_PROJECT: 'export:project',
-
-  STORAGE_ENCRYPT_SET: 'storage:encryptSet',
-  STORAGE_ENCRYPT_GET: 'storage:encryptGet',
-  STORAGE_ENCRYPT_REMOVE: 'storage:encryptRemove',
-
-  MONITOR_MEMORY_USAGE: 'monitor:memory-usage'
-} as const
-
-export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS]
-
 import type { ChapterStatus, CharacterRole, NarrativeFramework, ProjectStatus, SkillCategory, WorldType } from './index'
 
 // Re-export types used in DTOs
@@ -216,6 +143,7 @@ export type LLMConfigMeta = {
   model: string
   baseUrl?: string
   hasKey: boolean
+  customProtocol?: 'openai' | 'anthropic'
 } | null
 
 export type LearningAnalysisResult = {

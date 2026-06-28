@@ -32,12 +32,14 @@ export interface IChapterRepository {
   update(id: string, data: Partial<Omit<Chapter, 'id' | 'createdAt' | 'novelId'>>): void
   getChapterCounts(novelIds: string[]): Record<string, number>
   batchCreate(chapters: Omit<Chapter, 'createdAt' | 'updatedAt'>[]): Chapter[]
+  clearCache(): void
 }
 
 export interface INovelRepository {
   create(data: Partial<Omit<Novel, 'id' | 'createdAt' | 'updatedAt'>> & { id?: string }): Novel
   getById(id: string): Novel | null
   getByProject(projectId: string): Novel | null
+  clearCache(): void
 }
 
 export interface ICharacterRepository {
@@ -81,6 +83,8 @@ export interface ITrajectoryRepository {
   getByProject(projectId: string, limit?: number): TrajectoryEntry[]
   getBySkill(skillId: string, limit?: number): TrajectoryEntry[]
   getBySession(sessionId: string): TrajectoryEntry[]
+  countByProject(projectId: string): number
+  getLastActiveByProject(projectId: string): string | null
   detectPatterns(projectId: string): { skillId: string; count: number; ratio: number }[]
   searchMemory(projectId: string, query: string, limit?: number): TrajectoryEntry[]
 }

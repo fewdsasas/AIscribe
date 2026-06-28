@@ -73,7 +73,7 @@ describe('Character IPC Handlers', () => {
         targetAudience: ''
       })
 
-      const result = await handler(null, { novelId: novel.id, name: 'Hero' })
+      const result = await handler(null, { novelId: novel.id, name: 'Hero', role: 'protagonist' })
       expect(result).toBeDefined()
       expect(result.name).toBe('Hero')
       expect(result.novelId).toBe(novel.id)
@@ -81,7 +81,21 @@ describe('Character IPC Handlers', () => {
 
     it('should reject empty character name', async () => {
       const handler = getRegisteredHandler('character:create')
-      await expect(handler(null, { novelId: testId(), name: '' })).rejects.toThrow('角色名称 不能为空')
+      await expect(handler(null, { novelId: testId(), name: '', role: 'protagonist' })).rejects.toThrow(
+        '角色名称 不能为空'
+      )
+    })
+
+    it('should reject missing novel ID', async () => {
+      const handler = getRegisteredHandler('character:create')
+      await expect(handler(null, { name: 'Hero', role: 'protagonist' })).rejects.toThrow('小说ID 不能为空')
+    })
+
+    it('should reject invalid role enum', async () => {
+      const handler = getRegisteredHandler('character:create')
+      await expect(
+        handler(null, { novelId: '12345678-1234-1234-1234-123456789abc', name: 'Hero', role: 'unknown' })
+      ).rejects.toThrow('角色类型 必须是以下值之一')
     })
   })
 

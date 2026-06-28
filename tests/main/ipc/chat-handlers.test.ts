@@ -35,12 +35,12 @@ const mockLLMProvider: ILLMProvider = {
   configure: mockConfigure,
   resetConfig: mockResetConfig,
   chat: mockChat,
+  testConnection: vi.fn(),
   chatStream: mockChatStream,
   cancelStream: mockCancelStream
 }
 
 import { registerChatHandlers } from '../../../src/main/ipc/chat.ipc'
-import { IPC_CHANNELS } from '../../../src/shared/types/ipc'
 
 describe('Chat IPC Handlers', () => {
   beforeAll(async () => {
@@ -68,9 +68,21 @@ describe('Chat IPC Handlers', () => {
       expect(result).toBeDefined()
     })
 
+    it('should reject non-object request', async () => {
+      const handler = getRegisteredHandler('llm:chat')
+      await expect(handler(null, null)).rejects.toThrow('LLM 请求 格式无效')
+    })
+
     it('should reject empty messages', async () => {
       const handler = getRegisteredHandler('llm:chat')
       await expect(handler(null, { messages: [] })).rejects.toThrow('对话消息不能为空')
+    })
+
+    it('should reject invalid message role', async () => {
+      const handler = getRegisteredHandler('llm:chat')
+      await expect(handler(null, { messages: [{ role: 'invalid', content: 'Hello' }] })).rejects.toThrow(
+        '消息角色 必须是以下值之一'
+      )
     })
   })
 
@@ -92,12 +104,38 @@ describe('Chat IPC Handlers', () => {
       expect(result).toBe(true)
     })
 
+    it('should reject non-object request', async () => {
+      const handler = getRegisteredHandler('llm:chat-stream')
+      const mockEvent = { sender: { send: vi.fn(), isDestroyed: () => false } }
+      await expect(handler(mockEvent, null)).rejects.toThrow('LLM 请求 格式无效')
+    })
+
+    it('should reject empty messages', async () => {
+      const handler = getRegisteredHandler('llm:chat-stream')
+      const mockEvent = { sender: { send: vi.fn(), isDestroyed: () => false } }
+      await expect(handler(mockEvent, { messages: [] })).rejects.toThrow('对话消息不能为空')
+    })
+
+    it('should reject non-array messages', async () => {
+      const handler = getRegisteredHandler('llm:chat-stream')
+      const mockEvent = { sender: { send: vi.fn(), isDestroyed: () => false } }
+      await expect(handler(mockEvent, { messages: 'not-array' })).rejects.toThrow('messages 必须是数组')
+    })
+
     it('should reject invalid message format', async () => {
       const handler = getRegisteredHandler('llm:chat-stream')
       const mockEvent = { sender: { send: vi.fn(), isDestroyed: () => false } }
 
       await expect(handler(mockEvent, { messages: [{ invalid: true }] })).rejects.toThrow(
         '每条消息必须包含 role 和 content 字符串'
+      )
+    })
+
+    it('should reject invalid message role', async () => {
+      const handler = getRegisteredHandler('llm:chat-stream')
+      const mockEvent = { sender: { send: vi.fn(), isDestroyed: () => false } }
+      await expect(handler(mockEvent, { messages: [{ role: 'invalid', content: 'Hello' }] })).rejects.toThrow(
+        '消息角色 必须是以下值之一'
       )
     })
 
@@ -119,7 +157,7 @@ describe('Chat IPC Handlers', () => {
       const request = { messages: [{ role: 'user', content: 'Test' }] }
       const result = await handler(mockEvent, request)
 
-      expect(mockSend).toHaveBeenCalledWith(IPC_CHANNELS.LLM_ERROR, { message: errorMessage })
+      expect(mockSend).toHaveBeenCalledWith('llm:error', { message: errorMessage })
       expect(result).toBe(true)
     })
 
@@ -142,7 +180,7 @@ describe('Chat IPC Handlers', () => {
       await handler(mockEvent, request)
 
       expect(mockSend).toHaveBeenCalledWith(
-        IPC_CHANNELS.LLM_ERROR,
+        'llm:error',
         expect.objectContaining({
           message: expect.not.stringContaining(apiKey)
         })
@@ -170,6 +208,20 @@ describe('Chat IPC Handlers', () => {
 
       expect(mockSend).not.toHaveBeenCalled()
       expect(result).toBe(true)
+    })
+  })
+
+  describe('llm:cancel-stream', () => {
+    it('should cancel stream by requestId', async () => {
+      const handler = getRegisteredHandler('llm:cancel-stream')
+      const result = await handler(null, 'req-123')
+      expect(mockCancelStream).toHaveBeenCalledWith('req-123')
+      expect(result).toBe(true)
+    })
+
+    it('should reject empty requestId', async () => {
+      const handler = getRegisteredHandler('llm:cancel-stream')
+      await expect(handler(null, '')).rejects.toThrow('requestId 不能为空')
     })
   })
 })

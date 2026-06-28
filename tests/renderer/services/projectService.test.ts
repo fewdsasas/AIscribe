@@ -144,7 +144,12 @@ describe('createProjectService', () => {
   it('should delegate dashboardStats to api.projectDashboardStats', async () => {
     const api = createMockApi()
     const service = createProjectService(api)
-    const stats = [{ id: 'p1', name: 'Project 1', novelCount: 2, chapterCount: 10 } as Project & { novelCount: number; chapterCount: number }]
+    const stats = [
+      { id: 'p1', name: 'Project 1', novelCount: 2, chapterCount: 10 } as Project & {
+        novelCount: number
+        chapterCount: number
+      }
+    ]
     vi.mocked(api.projectDashboardStats).mockResolvedValue(stats)
 
     const result = await service.dashboardStats()

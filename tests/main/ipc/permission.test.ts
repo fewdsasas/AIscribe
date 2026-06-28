@@ -41,6 +41,10 @@ describe('PermissionManager', () => {
     it('should return null for unknown channel', () => {
       expect(permissionManager.getChannelPermission('unknown:channel')).toBeNull()
     })
+
+    it('should return write for llm:test-connection', () => {
+      expect(permissionManager.getChannelPermission('llm:test-connection')).toBe('write')
+    })
   })
 
   describe('canExecute', () => {

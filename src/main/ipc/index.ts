@@ -25,6 +25,25 @@ export function requireNonEmptyString(value: unknown, label: string): asserts va
   if (value.length > MAX_STRING_LENGTH) throw new Error(`${label} 过长`)
 }
 
+export function requireEnum<T extends string>(
+  value: unknown,
+  allowed: readonly T[],
+  label: string
+): asserts value is T {
+  if (typeof value !== 'string' || !allowed.includes(value as T)) {
+    throw new Error(`${label} 必须是以下值之一: ${allowed.join(', ')}`)
+  }
+}
+
+export function requireNumber(value: unknown, label: string): asserts value is number {
+  if (typeof value !== 'number' || Number.isNaN(value)) throw new Error(`${label} 必须为数字`)
+}
+
+export function requireNonNegativeNumber(value: unknown, label: string): asserts value is number {
+  requireNumber(value, label)
+  if (value < 0) throw new Error(`${label} 不能为负数`)
+}
+
 // ===== Wrap helper =====
 
 /** Wraps an IPC handler that doesn't need the event object (auto-strips it) */
@@ -60,7 +79,12 @@ export function wrapEvent<TArgs extends unknown[], TReturn>(
 
 /** Strip sensitive patterns (API keys, tokens) from error messages */
 export function sanitizeError(message: string): string {
-  return message.replace(/[a-zA-Z]*key[-_][a-zA-Z0-9]{8,}/gi, '***key-***').replace(/sk-[a-zA-Z0-9]{8,}/gi, '***sk-***')
+  return message
+    .replace(/[a-zA-Z]*key[-_][a-zA-Z0-9]{8,}/gi, '***key-***')
+    .replace(/sk-[a-zA-Z0-9]{8,}/gi, '***sk-***')
+    .replace(/Bearer\s+[a-zA-Z0-9_\-]{8,}/gi, 'Bearer ***')
+    .replace(/x-api-key\s*:\s*\S+/gi, 'x-api-key: ***')
+    .replace(/[a-f0-9]{32,}/gi, '***hex***')
 }
 
 /** Common error handling for IPC wrappers */

@@ -10,7 +10,15 @@ describe('createNovelService', () => {
   it('should delegate create to api.novelCreate', async () => {
     const api = createMockAiscribeAPI()
     const service = createNovelService(api)
-    const data: CreateNovelData = { projectId: 'p1', title: 'Novel 1', author: '', synopsis: '', genre: '', tags: [], targetAudience: '' }
+    const data: CreateNovelData = {
+      projectId: 'p1',
+      title: 'Novel 1',
+      author: '',
+      synopsis: '',
+      genre: '',
+      tags: [],
+      targetAudience: ''
+    }
     const novel: Novel = { id: 'n1', ...data } as Novel
     vi.mocked(api.novelCreate).mockResolvedValue(novel)
 

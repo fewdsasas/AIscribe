@@ -452,7 +452,21 @@ export class Database implements IDatabase {
   }
 
   deleteProject(id: string): void {
-    return this.projects.delete(id)
+    // sql.js foreign key cascade enforcement is unreliable in some builds,
+    // so we explicitly delete child records to guarantee data integrity.
+    const novel = this.novels.getByProject(id)
+    if (novel) {
+      const chapterSql = 'DELETE FROM chapters WHERE novel_id = ?'
+      this.operationLog?.append(chapterSql, [novel.id])
+      this.sqlDb.run(chapterSql, [novel.id])
+
+      const novelSql = 'DELETE FROM novels WHERE project_id = ?'
+      this.operationLog?.append(novelSql, [id])
+      this.sqlDb.run(novelSql, [id])
+    }
+    this.projects.delete(id)
+    this.novels.clearCache()
+    this.chapters.clearCache()
   }
 
   createNovel(data: Parameters<NovelRepository['create']>[0]): Novel {

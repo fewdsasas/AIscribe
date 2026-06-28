@@ -68,9 +68,7 @@ describe('EditorView', () => {
       { id: 'p2', name: 'Project 2' } as Project
     ])
     mockedNovelService.getByProject.mockResolvedValue({ id: 'n1', projectId: 'p1', title: 'Novel 1' } as Novel)
-    mockedChapterService.list.mockResolvedValue([
-      { id: 'c1', novelId: 'n1', title: 'Chapter 1' } as ChapterSummary
-    ])
+    mockedChapterService.list.mockResolvedValue([{ id: 'c1', novelId: 'n1', title: 'Chapter 1' } as ChapterSummary])
     mockedChapterService.get.mockResolvedValue({
       id: 'c1',
       novelId: 'n1',

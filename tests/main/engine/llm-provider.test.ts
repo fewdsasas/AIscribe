@@ -65,6 +65,44 @@ describe('LLMProvider', () => {
       expect(() => provider.getDefaultProvider()).not.toThrow()
     })
 
+    it('should extract content from choices[0].text when message is absent', async () => {
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          choices: [{ text: 'Text-style completion' }]
+        })
+      })
+      vi.stubGlobal('fetch', mockFetch)
+
+      provider.configure({
+        provider: 'openai',
+        apiKey: 'sk-test',
+        model: 'gpt-4o'
+      })
+
+      const response = await provider.chat({ messages: [{ role: 'user', content: 'Hi' }] })
+      expect(response.content).toBe('Text-style completion')
+    })
+
+    it('should return empty usage when response has no usage field', async () => {
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          choices: [{ message: { content: 'No usage' } }]
+        })
+      })
+      vi.stubGlobal('fetch', mockFetch)
+
+      provider.configure({
+        provider: 'openai',
+        apiKey: 'sk-test',
+        model: 'gpt-4o'
+      })
+
+      const response = await provider.chat({ messages: [{ role: 'user', content: 'Hi' }] })
+      expect(response.usage).toBeUndefined()
+    })
+
     it('should throw when trying to chat without configuration', async () => {
       await expect(
         provider.chat({
@@ -129,7 +167,7 @@ describe('LLMProvider', () => {
         provider.chat({
           messages: [{ role: 'user', content: 'test' }]
         })
-      ).rejects.toThrow('API 错误')
+      ).rejects.toThrow('API Error (401): Invalid API key')
     })
 
     it('should support system messages', async () => {
@@ -241,7 +279,7 @@ describe('LLMProvider', () => {
       expect(response.usage.totalTokens).toBe(20)
     })
 
-    it('should use Authorization: Bearer header for auth', async () => {
+    it('should use x-api-key header for auth', async () => {
       const mockFetch = vi.fn().mockResolvedValue({
         ok: true,
         json: async () => ({ content: [{ text: 'ok' }] })
@@ -251,7 +289,8 @@ describe('LLMProvider', () => {
       await provider.chat({ messages: [{ role: 'user', content: 'Hi' }] }, 'claude')
 
       const headers = mockFetch.mock.calls[0][1].headers
-      expect(headers.Authorization).toBe('Bearer sk-claude-key')
+      expect(headers['x-api-key']).toBe('sk-claude-key')
+      expect(headers.Authorization).toBeUndefined()
     })
 
     it('should not include stream flag in chatStream body (shouldSendStreamFlag=false)', async () => {
@@ -262,11 +301,7 @@ describe('LLMProvider', () => {
       const onDone = vi.fn()
       const onError = vi.fn()
 
-      await provider.chatStream(
-        { messages: [{ role: 'user', content: 'Hi' }] },
-        { onChunk, onDone, onError },
-        'claude'
-      )
+      await provider.chatStream({ messages: [{ role: 'user', content: 'Hi' }] }, { onChunk, onDone, onError }, 'claude')
 
       expect(onError).not.toHaveBeenCalled()
       expect(onDone).toHaveBeenCalled()
@@ -706,6 +741,23 @@ describe('LLMProvider', () => {
       expect(onError).not.toHaveBeenCalled()
     })
 
+    it('should extract text from content array in SSE chunk', async () => {
+      const mock = createMockStreamResponseWithSpies([
+        'data: {"content":[{"type":"text","text":"from content array"}]}\n\n'
+      ])
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue(mock.response))
+
+      const onChunk = vi.fn()
+      const onDone = vi.fn()
+      const onError = vi.fn()
+
+      await provider.chatStream({ messages: [{ role: 'user', content: 'Hi' }] }, { onChunk, onDone, onError })
+
+      expect(onChunk).toHaveBeenCalledWith('from content array')
+      expect(onDone).toHaveBeenCalled()
+      expect(onError).not.toHaveBeenCalled()
+    })
+
     it('should extract text from Claude content_block_delta format', async () => {
       provider.configure({
         provider: 'claude',
@@ -721,11 +773,7 @@ describe('LLMProvider', () => {
       const onDone = vi.fn()
       const onError = vi.fn()
 
-      await provider.chatStream(
-        { messages: [{ role: 'user', content: 'Hi' }] },
-        { onChunk, onDone, onError },
-        'claude'
-      )
+      await provider.chatStream({ messages: [{ role: 'user', content: 'Hi' }] }, { onChunk, onDone, onError }, 'claude')
 
       expect(onChunk).toHaveBeenCalledWith('world')
       expect(onDone).toHaveBeenCalled()
@@ -932,6 +980,157 @@ describe('LLMProvider', () => {
     })
   })
 
+  describe('additional content extraction branches', () => {
+    it('should return empty string when choices[0].message.content is empty and text is missing', async () => {
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ choices: [{ message: { content: '' } }] })
+      })
+      vi.stubGlobal('fetch', mockFetch)
+
+      provider.configure({
+        provider: 'openai',
+        apiKey: 'sk-test',
+        model: 'gpt-4o'
+      })
+
+      const response = await provider.chat({ messages: [{ role: 'user', content: 'Hi' }] })
+      expect(response.content).toBe('')
+    })
+
+    it('should return empty string when Claude content block text is empty', async () => {
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          content: [{ type: 'text', text: '' }],
+          usage: { input_tokens: 1, output_tokens: 1 }
+        })
+      })
+      vi.stubGlobal('fetch', mockFetch)
+
+      provider.configure({
+        provider: 'claude',
+        apiKey: 'sk-claude',
+        model: 'claude-sonnet-4'
+      })
+
+      const response = await provider.chat({ messages: [{ role: 'user', content: 'Hi' }] }, 'claude')
+      expect(response.content).toBe('')
+    })
+  })
+
+  describe('chatStream error branches', () => {
+    it('should call onError with statusText when HTTP error body is not JSON', async () => {
+      provider.configure({
+        provider: 'openai',
+        apiKey: 'sk-test',
+        model: 'gpt-4o'
+      })
+
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue({
+          ok: false,
+          status: 503,
+          statusText: 'Service Unavailable',
+          body: { cancel: () => {} },
+          json: async () => {
+            throw new Error('not json')
+          }
+        })
+      )
+
+      const onChunk = vi.fn()
+      const onDone = vi.fn()
+      const onError = vi.fn()
+
+      await provider.chatStream({ messages: [{ role: 'user', content: 'Hi' }] }, { onChunk, onDone, onError })
+
+      expect(onError).toHaveBeenCalledWith('API Error (503): Service Unavailable')
+      expect(onDone).not.toHaveBeenCalled()
+      expect(onChunk).not.toHaveBeenCalled()
+    })
+
+    it('should use choice.text fallback when delta exists without content', async () => {
+      provider.configure({
+        provider: 'openai',
+        apiKey: 'sk-test',
+        model: 'gpt-4o'
+      })
+
+      function createMockStreamResponseWithSpies(chunks: string[]) {
+        const encoder = new TextEncoder()
+        let index = 0
+        const read = vi.fn(async () => {
+          if (index < chunks.length) {
+            return { done: false, value: encoder.encode(chunks[index++]) }
+          }
+          return { done: true, value: undefined }
+        })
+        const cancel = vi.fn()
+        const releaseLock = vi.fn()
+        return {
+          response: {
+            ok: true,
+            body: { getReader: () => ({ read, cancel, releaseLock }) }
+          },
+          cancel,
+          releaseLock,
+          read
+        }
+      }
+
+      const mock = createMockStreamResponseWithSpies(['data: {"choices":[{"delta":{},"text":"fallback text"}]}\n\n'])
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue(mock.response))
+
+      const onChunk = vi.fn()
+      const onDone = vi.fn()
+      const onError = vi.fn()
+
+      await provider.chatStream({ messages: [{ role: 'user', content: 'Hi' }] }, { onChunk, onDone, onError })
+
+      expect(onChunk).toHaveBeenCalledWith('fallback text')
+      expect(onDone).toHaveBeenCalled()
+      expect(onError).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('cancelStream', () => {
+    it('should return false when requestId is not found', () => {
+      expect(provider.cancelStream('missing-id')).toBe(false)
+    })
+
+    it('should cancel active stream by requestId', async () => {
+      provider.configure({
+        provider: 'openai',
+        apiKey: 'sk-stream-key',
+        model: 'gpt-4o'
+      })
+
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue(createMockStreamResponse(['data: {"choices":[{"delta":{"content":"hello"}}]}\n\n']))
+      )
+
+      const onChunk = vi.fn()
+      const onDone = vi.fn()
+      const onError = vi.fn()
+
+      const streamPromise = provider.chatStream(
+        { messages: [{ role: 'user', content: 'Hi' }] },
+        { onChunk, onDone, onError },
+        'openai',
+        'req-123'
+      )
+
+      provider.cancelStream('req-123')
+
+      await streamPromise
+
+      expect(provider.cancelStream('req-123')).toBe(false)
+    })
+  })
+
   describe('initFromStorage', () => {
     afterEach(() => {
       vi.restoreAllMocks()
@@ -956,6 +1155,25 @@ describe('LLMProvider', () => {
       expect(config.model).toBe('claude-sonnet')
       expect(config.temperature).toBe(0.5)
       expect(config.maxTokens).toBe(2048)
+    })
+
+    it('should preserve customProtocol when loading from storage', () => {
+      vi.spyOn(SecureLLMConfig, 'load').mockReturnValue({
+        provider: 'custom',
+        apiKey: 'sk-stored',
+        model: 'custom-model',
+        baseUrl: 'https://custom.example.com/v1',
+        temperature: 0.5,
+        maxTokens: 2048,
+        customProtocol: 'anthropic'
+      })
+
+      provider.initFromStorage()
+
+      const config = provider.getConfig('custom')
+      expect(config).toBeDefined()
+      if (!config) throw new Error('config not set')
+      expect(config.customProtocol).toBe('anthropic')
     })
 
     it('should not throw when SecureLLMConfig.load returns null', () => {
@@ -1004,6 +1222,22 @@ describe('LLMProvider', () => {
       )
     })
 
+    it('should fall back to statusText when error body JSON parsing fails', async () => {
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 503,
+        statusText: 'Service Unavailable',
+        json: async () => {
+          throw new Error('not json')
+        }
+      })
+      vi.stubGlobal('fetch', mockFetch)
+
+      await expect(provider.chat({ messages: [{ role: 'user', content: 'Hi' }] }, 'wenxin')).rejects.toThrow(
+        'Service Unavailable'
+      )
+    })
+
     it('should fall back to statusText when error body has no error.message or error_msg', async () => {
       const mockFetch = vi.fn().mockResolvedValue({
         ok: false,
@@ -1016,6 +1250,163 @@ describe('LLMProvider', () => {
       await expect(provider.chat({ messages: [{ role: 'user', content: 'Hi' }] }, 'wenxin')).rejects.toThrow(
         'Internal Server Error'
       )
+    })
+  })
+
+  describe('testConnection', () => {
+    it('should send a minimal request and return true on success', async () => {
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          choices: [{ message: { content: 'Hi there' } }],
+          usage: { prompt_tokens: 1, completion_tokens: 2, total_tokens: 3 }
+        })
+      })
+      vi.stubGlobal('fetch', mockFetch)
+
+      const result = await provider.testConnection({
+        provider: 'openai',
+        apiKey: 'sk-test-key',
+        model: 'gpt-4o'
+      })
+
+      expect(result).toBe(true)
+      expect(mockFetch).toHaveBeenCalledTimes(1)
+      const body = JSON.parse(mockFetch.mock.calls[0][1].body)
+      expect(body.messages).toHaveLength(1)
+      expect(body.messages[0].content).toBe('Hello')
+    })
+
+    it('should not modify internal config state', async () => {
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockResolvedValue({
+          ok: true,
+          json: async () => ({ choices: [{ message: { content: 'ok' } }] })
+        })
+      )
+
+      await provider.testConnection({
+        provider: 'openai',
+        apiKey: 'sk-test-key',
+        model: 'gpt-4o'
+      })
+
+      expect(provider.getConfig('openai')).toBeUndefined()
+      expect(() => provider.getDefaultProvider()).toThrow('未配置 LLM 提供商')
+    })
+
+    it('should use provided baseUrl for connection test', async () => {
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ choices: [{ message: { content: 'ok' } }] })
+      })
+      vi.stubGlobal('fetch', mockFetch)
+
+      await provider.testConnection({
+        provider: 'openai',
+        apiKey: 'sk-test-key',
+        model: 'gpt-4o',
+        baseUrl: 'https://proxy.example.com/v1'
+      })
+
+      expect(mockFetch.mock.calls[0][0]).toBe('https://proxy.example.com/v1/chat/completions')
+    })
+
+    it('should throw on API errors during connection test', async () => {
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: false,
+        status: 401,
+        json: async () => ({ error: { message: 'Invalid API key' } })
+      })
+      vi.stubGlobal('fetch', mockFetch)
+
+      await expect(
+        provider.testConnection({
+          provider: 'openai',
+          apiKey: 'sk-test-key',
+          model: 'gpt-4o'
+        })
+      ).rejects.toThrow('Invalid API key')
+    })
+
+    it('should throw on unknown provider', async () => {
+      await expect(
+        provider.testConnection({
+          provider: 'unknown' as any,
+          apiKey: 'sk-test-key',
+          model: 'test'
+        })
+      ).rejects.toThrow('未知的提供商策略')
+    })
+
+    it('should use default custom strategy (openai) when custom provider has no protocol', async () => {
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          choices: [{ message: { content: 'ok' } }],
+          usage: { prompt_tokens: 1, completion_tokens: 2, total_tokens: 3 }
+        })
+      })
+      vi.stubGlobal('fetch', mockFetch)
+
+      await provider.testConnection({
+        provider: 'custom',
+        apiKey: 'sk-custom-key',
+        model: 'custom-model',
+        baseUrl: 'https://custom.example.com/v1'
+      })
+
+      expect(mockFetch.mock.calls[0][0]).toBe('https://custom.example.com/v1/chat/completions')
+      const headers = mockFetch.mock.calls[0][1].headers
+      expect(headers.Authorization).toBe('Bearer sk-custom-key')
+    })
+
+    it('should use custom-openai strategy when custom provider with openai protocol', async () => {
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          choices: [{ message: { content: 'ok' } }],
+          usage: { prompt_tokens: 1, completion_tokens: 2, total_tokens: 3 }
+        })
+      })
+      vi.stubGlobal('fetch', mockFetch)
+
+      await provider.testConnection({
+        provider: 'custom',
+        apiKey: 'sk-custom-key',
+        model: 'custom-model',
+        baseUrl: 'https://custom.example.com/v1',
+        customProtocol: 'openai'
+      })
+
+      expect(mockFetch.mock.calls[0][0]).toBe('https://custom.example.com/v1/chat/completions')
+      const headers = mockFetch.mock.calls[0][1].headers
+      expect(headers.Authorization).toBe('Bearer sk-custom-key')
+    })
+
+    it('should use custom-anthropic strategy when custom provider with anthropic protocol', async () => {
+      const mockFetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          content: [{ type: 'text', text: 'ok' }],
+          usage: { input_tokens: 1, output_tokens: 2 }
+        })
+      })
+      vi.stubGlobal('fetch', mockFetch)
+
+      await provider.testConnection({
+        provider: 'custom',
+        apiKey: 'sk-custom-key',
+        model: 'custom-model',
+        baseUrl: 'https://custom.example.com/v1',
+        customProtocol: 'anthropic'
+      })
+
+      expect(mockFetch.mock.calls[0][0]).toBe('https://custom.example.com/v1/messages')
+      const headers = mockFetch.mock.calls[0][1].headers
+      expect(headers['x-api-key']).toBe('sk-custom-key')
+      expect(headers.Authorization).toBeUndefined()
     })
   })
 })

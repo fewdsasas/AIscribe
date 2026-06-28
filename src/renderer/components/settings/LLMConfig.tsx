@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { DEFAULT_ENDPOINTS } from '@shared/constants'
+import type { LLMCustomProtocol } from '@shared/types'
+import { DEFAULT_ENDPOINTS, DEFAULT_MODELS } from '@shared/constants'
 import { llmService } from '../../services'
 
 const PROVIDERS = [
@@ -11,12 +12,22 @@ const PROVIDERS = [
   { id: 'custom' as const, label: '自定义' }
 ]
 
+const CUSTOM_PROTOCOLS: { id: LLMCustomProtocol; label: string }[] = [
+  { id: 'openai', label: 'OpenAI 兼容协议' },
+  { id: 'anthropic', label: 'Anthropic 协议' }
+]
+
 export const LLMConfig: React.FC = () => {
   const [provider, setProvider] = useState('openai')
   const [apiKey, setApiKey] = useState('')
   const [model, setModel] = useState('')
   const [baseUrl, setBaseUrl] = useState('')
+  const [customProtocol, setCustomProtocol] = useState<LLMCustomProtocol>('openai')
   const [saved, setSaved] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [testStatus, setTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle')
+  const [testError, setTestError] = useState<string | null>(null)
   const [showKey, setShowKey] = useState(false)
   const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -29,6 +40,9 @@ export const LLMConfig: React.FC = () => {
           setProvider(meta.provider ?? 'openai')
           setModel(meta.model ?? '')
           setBaseUrl(meta.baseUrl ?? '')
+          if (meta.customProtocol === 'anthropic' || meta.customProtocol === 'openai') {
+            setCustomProtocol(meta.customProtocol)
+          }
         }
       } catch (err) {
         console.warn('LLM 配置加载失败:', err)
@@ -47,11 +61,16 @@ export const LLMConfig: React.FC = () => {
   }, [])
 
   const handleSave = async () => {
+    setSaving(true)
+    setError(null)
+    setSaved(false)
+
     const config = {
       provider: provider as (typeof PROVIDERS)[number]['id'],
       apiKey,
       model,
-      baseUrl: baseUrl.trim() || undefined
+      baseUrl: baseUrl.trim() || undefined,
+      customProtocol: isCustom ? customProtocol : undefined
     }
     if (baseUrl.trim()) config.baseUrl = baseUrl.trim()
 
@@ -61,11 +80,38 @@ export const LLMConfig: React.FC = () => {
       if (savedTimerRef.current) clearTimeout(savedTimerRef.current)
       savedTimerRef.current = setTimeout(() => setSaved(false), 2000)
     } catch (err) {
-      console.error('Failed to save LLM config:', err)
+      setError(`保存失败: ${(err as Error).message}`)
+    }
+    setSaving(false)
+  }
+
+  const handleTestConnection = async () => {
+    setTestStatus('testing')
+    setTestError(null)
+
+    try {
+      await llmService.testConnection({
+        provider: provider as (typeof PROVIDERS)[number]['id'],
+        apiKey,
+        model,
+        baseUrl: baseUrl.trim() || undefined,
+        customProtocol: isCustom ? customProtocol : undefined
+      })
+      setTestStatus('success')
+    } catch (err) {
+      setTestStatus('error')
+      setTestError(`连接失败: ${(err as Error).message}`)
     }
   }
 
+  // Reset test result when config changes
+  useEffect(() => {
+    setTestStatus('idle')
+    setTestError(null)
+  }, [provider, apiKey, model, baseUrl, customProtocol])
+
   const isCustom = provider === 'custom'
+  const canSubmit = !!apiKey.trim() && !!model.trim() && (!isCustom || !!baseUrl.trim())
 
   return (
     <div className="space-y-4">
@@ -81,10 +127,16 @@ export const LLMConfig: React.FC = () => {
               key={p.id}
               onClick={() => {
                 setProvider(p.id)
-                // Pre-fill baseUrl only for known providers if empty
-                if (p.id !== 'custom' && !baseUrl) {
-                  setBaseUrl(DEFAULT_ENDPOINTS[p.id] ?? '')
+                setSaved(false)
+                setError(null)
+                setApiKey('')
+                if (p.id === 'custom') {
+                  setBaseUrl('')
+                  setModel('')
+                  return
                 }
+                setBaseUrl(DEFAULT_ENDPOINTS[p.id] ?? '')
+                setModel(DEFAULT_MODELS[p.id] || '')
               }}
               className={`px-3 py-2 rounded-lg text-xs border transition-colors ${
                 provider === p.id
@@ -118,6 +170,33 @@ export const LLMConfig: React.FC = () => {
         </div>
       </div>
 
+      {/* Custom protocol selector */}
+      {isCustom && (
+        <div>
+          <label className="block text-xs font-medium text-[--color-text] mb-1">接口协议</label>
+          <div className="grid grid-cols-2 gap-2">
+            {CUSTOM_PROTOCOLS.map(proto => (
+              <button
+                key={proto.id}
+                onClick={() => {
+                  setCustomProtocol(proto.id)
+                  setSaved(false)
+                  setError(null)
+                }}
+                className={`px-3 py-2 rounded-lg text-xs border transition-colors ${
+                  customProtocol === proto.id
+                    ? 'border-[--color-primary] bg-[--accent-bg] text-[--color-primary]'
+                    : 'border-[--color-border] text-[--color-text-secondary] hover:border-[--color-primary]'
+                }`}
+              >
+                {proto.label}
+              </button>
+            ))}
+          </div>
+          <p className="text-[10px] text-[--color-text-secondary] mt-1">选择你的自定义接口使用的协议格式</p>
+        </div>
+      )}
+
       {/* Base URL (always shown, editable) */}
       <div>
         <label className="block text-xs font-medium text-[--color-text] mb-1">
@@ -135,7 +214,9 @@ export const LLMConfig: React.FC = () => {
           className="w-full px-3 py-2 bg-surface border border-[--color-border] rounded-lg text-xs focus:outline-none focus:border-[--color-primary] font-mono"
         />
         <p className="text-[10px] text-[--color-text-secondary] mt-1">
-          {isCustom ? '填写你的 API 完整地址，需支持 OpenAI 兼容接口格式' : '可修改为代理地址或中转地址'}
+          {isCustom
+            ? `填写你的 API 完整地址，当前使用 ${customProtocol === 'anthropic' ? 'Anthropic' : 'OpenAI'} 兼容格式`
+            : '可修改为代理地址或中转地址'}
         </p>
       </div>
 
@@ -151,18 +232,51 @@ export const LLMConfig: React.FC = () => {
         />
       </div>
 
-      {/* Save */}
-      <button
-        onClick={handleSave}
-        disabled={!apiKey.trim() || !model.trim() || (isCustom && !baseUrl.trim())}
-        className={`px-4 py-2 text-xs rounded-lg font-medium transition-colors disabled:opacity-50 ${
-          saved
-            ? 'bg-[--success-bg] text-[var(--success)]'
-            : 'bg-[--color-primary] text-white hover:bg-[--color-primary-hover]'
-        }`}
-      >
-        {saved ? '✓ 已保存' : '保存配置'}
-      </button>
+      {/* Actions */}
+      <div className="flex gap-2">
+        <button
+          onClick={handleSave}
+          disabled={saving || !canSubmit}
+          className={`px-4 py-2 text-xs rounded-lg font-medium transition-colors disabled:opacity-50 ${
+            saved
+              ? 'bg-[--success-bg] text-[var(--success)]'
+              : 'bg-[--color-primary] text-white hover:bg-[--color-primary-hover]'
+          }`}
+        >
+          {saving ? '保存中...' : saved ? '✓ 已保存' : '保存配置'}
+        </button>
+        <button
+          onClick={handleTestConnection}
+          disabled={testStatus === 'testing' || !canSubmit}
+          className={`px-4 py-2 text-xs rounded-lg font-medium border transition-colors disabled:opacity-50 ${
+            testStatus === 'success'
+              ? 'bg-[--success-bg] border-[--success-bg] text-[var(--success)]'
+              : testStatus === 'error'
+                ? 'bg-[--danger-bg] border-[--danger-bg] text-[var(--danger)]'
+                : 'border-[--color-border] text-[--color-text-secondary] hover:border-[--color-primary] hover:text-[--color-primary]'
+          }`}
+        >
+          {testStatus === 'testing' ? '测试中...' : testStatus === 'success' ? '✓ 连接成功' : '测试连接'}
+        </button>
+      </div>
+
+      {error && (
+        <div
+          className="text-xs px-3 py-2 rounded-lg"
+          style={{ background: 'var(--danger-bg)', color: 'var(--danger)' }}
+        >
+          {error}
+        </div>
+      )}
+
+      {testError && (
+        <div
+          className="text-xs px-3 py-2 rounded-lg"
+          style={{ background: 'var(--danger-bg)', color: 'var(--danger)' }}
+        >
+          {testError}
+        </div>
+      )}
     </div>
   )
 }

@@ -1,5 +1,6 @@
 import type { IDatabase } from '../di'
 import type { Chapter, Novel } from '../../shared/types'
+import { logger } from '../utils/logger'
 
 export type ExportFormat = 'txt' | 'markdown' | 'html'
 
@@ -31,6 +32,18 @@ function escapeHtml(text: string): string {
     .replace(/'/g, '&#39;')
 }
 
+function tryExtractTextFromCorrupted(content: string): string {
+  const texts: string[] = []
+  // Only extract text from TipTap text nodes ({"type":"text","text":"..."})
+  // to avoid leaking metadata/comment nodes that also contain a "text" field.
+  const regex = /\{\s*"type"\s*:\s*"text"(?:[^{}]|\{[^{}]*\})*"text"\s*:\s*"((?:\\.|[^"\\])*)"/g
+  let match: RegExpExecArray | null
+  while ((match = regex.exec(content)) !== null) {
+    texts.push(match[1].replace(/\\"/g, '"').replace(/\\n/g, '\n'))
+  }
+  return texts.join('')
+}
+
 function extractTextFromContent(content: string): string {
   if (!content) return ''
   try {
@@ -38,7 +51,10 @@ function extractTextFromContent(content: string): string {
     if (typeof parsed === 'string') return parsed
     return extractTipTapText(parsed)
   } catch {
-    return content
+    const extracted = tryExtractTextFromCorrupted(content)
+    if (extracted) return extracted
+    logger.warn('[export] Failed to parse chapter content as JSON, returning empty text')
+    return ''
   }
 }
 
@@ -46,7 +62,9 @@ function extractTipTapText(node: Record<string, unknown>): string {
   if (node.text && typeof node.text === 'string') return node.text
   const children = node.content
   if (Array.isArray(children)) {
-    return children.map(child => extractTipTapText(child as Record<string, unknown>)).join('')
+    const isParagraph = node.type === 'paragraph'
+    const texts = children.map(child => extractTipTapText(child as Record<string, unknown>))
+    return isParagraph ? texts.join('') + '\n' : texts.join('')
   }
   return ''
 }

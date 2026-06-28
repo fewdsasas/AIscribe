@@ -87,4 +87,83 @@ describe('GlobalSearch', () => {
     expect(onSelectProject).toHaveBeenCalled()
     expect(onClose).toHaveBeenCalled()
   })
+
+  it('should search and display chapter results', async () => {
+    mockedProjectService.list.mockResolvedValue([{ id: 'p1', name: '测试项目', genre: '科幻' }] as any)
+    mockedNovelService.getByProject.mockResolvedValue({ id: 'n1' } as any)
+    mockedChapterService.list.mockResolvedValue([{ id: 'c1', title: '第一章' }] as any)
+    render(<GlobalSearch onClose={vi.fn()} />)
+    fireEvent.change(screen.getByPlaceholderText(/搜索项目/), { target: { value: '第一章' } })
+    await waitFor(() => expect(screen.getByText('第一章')).toBeInTheDocument(), { timeout: 3000 })
+  })
+
+  it('should search and display character results', async () => {
+    mockedProjectService.list.mockResolvedValue([{ id: 'p1', name: '测试项目', genre: '科幻' }] as any)
+    mockedNovelService.getByProject.mockResolvedValue({ id: 'n1' } as any)
+    mockedCharacterService.list.mockResolvedValue([{ id: 'char1', name: '主角' }] as any)
+    render(<GlobalSearch onClose={vi.fn()} />)
+    fireEvent.change(screen.getByPlaceholderText(/搜索项目/), { target: { value: '主角' } })
+    await waitFor(() => expect(screen.getByText('主角')).toBeInTheDocument(), { timeout: 3000 })
+  })
+
+  it('should handle search errors gracefully', async () => {
+    mockedProjectService.list.mockRejectedValue(new Error('search failed'))
+    render(<GlobalSearch onClose={vi.fn()} />)
+    fireEvent.change(screen.getByPlaceholderText(/搜索项目/), { target: { value: 'test' } })
+    await waitFor(() => expect(mockedProjectService.list).toHaveBeenCalled(), { timeout: 3000 })
+  })
+
+  it('should select chapter via keyboard', async () => {
+    const onSelectChapter = vi.fn()
+    const onClose = vi.fn()
+    mockedProjectService.list.mockResolvedValue([{ id: 'p1', name: '测试项目', genre: '科幻' }] as any)
+    mockedNovelService.getByProject.mockResolvedValue({ id: 'n1' } as any)
+    mockedChapterService.list.mockResolvedValue([{ id: 'c1', title: '第一章' }] as any)
+    render(<GlobalSearch onSelectChapter={onSelectChapter} onClose={onClose} />)
+    fireEvent.change(screen.getByPlaceholderText(/搜索项目/), { target: { value: '第一章' } })
+    await waitFor(() => expect(screen.getByText('第一章')).toBeInTheDocument(), { timeout: 3000 })
+    const input = screen.getByPlaceholderText(/搜索项目/)
+    fireEvent.keyDown(input, { key: 'Enter' })
+    expect(onSelectChapter).toHaveBeenCalledWith('c1', 'p1')
+    expect(onClose).toHaveBeenCalled()
+  })
+
+  it('should select character via click', async () => {
+    const onSelectProject = vi.fn()
+    const onClose = vi.fn()
+    mockedProjectService.list.mockResolvedValue([{ id: 'p1', name: '测试项目', genre: '科幻' }] as any)
+    mockedNovelService.getByProject.mockResolvedValue({ id: 'n1' } as any)
+    mockedCharacterService.list.mockResolvedValue([{ id: 'char1', name: '主角' }] as any)
+    render(<GlobalSearch onSelectProject={onSelectProject} onClose={onClose} />)
+    fireEvent.change(screen.getByPlaceholderText(/搜索项目/), { target: { value: '主角' } })
+    await waitFor(() => expect(screen.getByText('主角')).toBeInTheDocument(), { timeout: 3000 })
+    fireEvent.click(screen.getByText('主角'))
+    expect(onSelectProject).toHaveBeenCalledWith('p1')
+    expect(onClose).toHaveBeenCalled()
+  })
+
+  it('should handle ArrowUp navigation', async () => {
+    mockedProjectService.list.mockResolvedValue([
+      { id: 'p1', name: '项目A', genre: '奇幻' },
+      { id: 'p2', name: '项目B', genre: '科幻' }
+    ] as any)
+    render(<GlobalSearch onClose={vi.fn()} />)
+    fireEvent.change(screen.getByPlaceholderText(/搜索项目/), { target: { value: '项目' } })
+    await waitFor(() => expect(screen.getByText('项目A')).toBeInTheDocument(), { timeout: 3000 })
+    const input = screen.getByPlaceholderText(/搜索项目/)
+    fireEvent.keyDown(input, { key: 'ArrowDown' })
+    fireEvent.keyDown(input, { key: 'ArrowDown' })
+    fireEvent.keyDown(input, { key: 'ArrowUp' })
+    // Should not crash and selection should move up
+    expect(input).toBeInTheDocument()
+  })
+
+  it('should clear results when query is empty', async () => {
+    mockedProjectService.list.mockResolvedValue([{ id: 'p1', name: '测试项目', genre: '科幻' }] as any)
+    render(<GlobalSearch onClose={vi.fn()} />)
+    fireEvent.change(screen.getByPlaceholderText(/搜索项目/), { target: { value: '测试' } })
+    await waitFor(() => expect(screen.getByText('测试项目')).toBeInTheDocument(), { timeout: 3000 })
+    fireEvent.change(screen.getByPlaceholderText(/搜索项目/), { target: { value: '' } })
+    await waitFor(() => expect(screen.queryByText('测试项目')).not.toBeInTheDocument(), { timeout: 3000 })
+  })
 })

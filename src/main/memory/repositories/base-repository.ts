@@ -28,7 +28,7 @@ export abstract class BaseRepository {
   }
 
   /** 清空本仓库的全部缓存条目（写操作后调用以失效脏数据） */
-  protected clearCache(): void {
+  clearCache(): void {
     this.cache.clear()
   }
 

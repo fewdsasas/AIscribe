@@ -1,5 +1,6 @@
-import { describe, expect, it } from 'vitest'
-import { getInitialTheme, nextTheme, THEMES } from '@renderer/hooks/useTheme'
+import { beforeEach, describe, expect, it } from 'vitest'
+import { act, renderHook } from '@testing-library/react'
+import { getInitialTheme, nextTheme, THEMES, useTheme } from '@renderer/hooks/useTheme'
 import type { ThemeId } from '@renderer/hooks/useTheme'
 
 describe('getInitialTheme', () => {
@@ -46,5 +47,83 @@ describe('nextTheme', () => {
 
   it('should wrap around from night to light', () => {
     expect(nextTheme('night')).toBe('light')
+  })
+})
+
+// @vitest-environment jsdom
+
+describe('useTheme', () => {
+  beforeEach(() => {
+    document.documentElement.removeAttribute('data-theme')
+    document.documentElement.classList.remove('dark')
+    localStorage.removeItem('aiscribe-theme')
+    Object.defineProperty(window, 'matchMedia', {
+      value: () => ({ matches: false }),
+      configurable: true,
+      writable: true
+    })
+  })
+
+  it('should apply initial theme and update DOM', () => {
+    const { result } = renderHook(() => useTheme())
+
+    expect(result.current.theme).toBeDefined()
+    expect(document.documentElement.getAttribute('data-theme')).toBe(result.current.theme)
+  })
+
+  it('should toggle theme through cycle', () => {
+    const { result } = renderHook(() => useTheme())
+    const initialTheme = result.current.theme
+
+    act(() => {
+      result.current.toggleTheme()
+    })
+
+    expect(result.current.theme).toBe(nextTheme(initialTheme))
+  })
+
+  it('should set theme directly', () => {
+    const { result } = renderHook(() => useTheme())
+
+    act(() => {
+      result.current.setTheme('sepia')
+    })
+
+    expect(result.current.theme).toBe('sepia')
+    expect(document.documentElement.getAttribute('data-theme')).toBe('sepia')
+  })
+
+  it('should add dark class for dark themes', () => {
+    const { result } = renderHook(() => useTheme())
+
+    act(() => {
+      result.current.setTheme('dark')
+    })
+
+    expect(document.documentElement.classList.contains('dark')).toBe(true)
+  })
+
+  it('should remove dark class for light themes', () => {
+    const { result } = renderHook(() => useTheme())
+
+    act(() => {
+      result.current.setTheme('light')
+    })
+
+    expect(document.documentElement.classList.contains('dark')).toBe(false)
+  })
+
+  it('should report isDark correctly', () => {
+    const { result } = renderHook(() => useTheme())
+
+    act(() => {
+      result.current.setTheme('night')
+    })
+    expect(result.current.isDark).toBe(true)
+
+    act(() => {
+      result.current.setTheme('paper')
+    })
+    expect(result.current.isDark).toBe(false)
   })
 })

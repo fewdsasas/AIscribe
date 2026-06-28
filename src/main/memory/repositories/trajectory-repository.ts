@@ -86,6 +86,19 @@ export class TrajectoryRepository extends BaseRepository implements ITrajectoryR
     return result.values.map(row => mapRowToEntry(row, result.columns))
   }
 
+  countByProject(projectId: string): number {
+    const result = this.queryOne('SELECT COUNT(*) AS cnt FROM trajectories WHERE project_id = ?', [projectId])
+    return result ? asNumber(result.values[0][0]) : 0
+  }
+
+  getLastActiveByProject(projectId: string): string | null {
+    const result = this.queryOne(
+      'SELECT timestamp FROM trajectories WHERE project_id = ? ORDER BY timestamp DESC LIMIT 1',
+      [projectId]
+    )
+    return result ? asString(result.values[0][0]) : null
+  }
+
   detectPatterns(projectId: string): { skillId: string; count: number; ratio: number }[] {
     const entries = this.getByProject(projectId, 1000)
     const total = entries.length

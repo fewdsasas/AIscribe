@@ -10,7 +10,7 @@ import type {
   WorldHistory
 } from '../../../shared/types'
 import { BaseRepository } from './base-repository'
-import { asString, buildRowMap, now, safeJsonParse } from './row-mapper'
+import { asString, buildRowMap, now, safeJsonParse, safeJsonParseWithShape } from './row-mapper'
 import type { IWorldRepository } from './repository-interfaces'
 
 export class WorldRepository extends BaseRepository implements IWorldRepository {
@@ -30,6 +30,7 @@ export class WorldRepository extends BaseRepository implements IWorldRepository 
   }
 
   save(data: Partial<Omit<World, 'id' | 'createdAt' | 'updatedAt'>> & { id?: string }): World {
+    if (!data.novelId) throw new Error('novelId 不能为空')
     const id = data.id ?? uuid()
     const nowStr = now()
     const world: World = {
@@ -46,7 +47,7 @@ export class WorldRepository extends BaseRepository implements IWorldRepository 
       createdAt: nowStr,
       updatedAt: nowStr
     }
-    this.sqlDb.run(
+    this.run(
       `INSERT OR REPLACE INTO worlds (id, novel_id, name, type, geography, history, society, power_system, technology, economy, consistency, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       [
@@ -86,7 +87,13 @@ export class WorldRepository extends BaseRepository implements IWorldRepository 
         dailyLife: ''
       }),
       powerSystem: map.power_system
-        ? safeJsonParse<PowerSystem>(map.power_system, { name: '', rules: [], limitations: [], costs: [], source: '' })
+        ? safeJsonParseWithShape<PowerSystem>(map.power_system, {
+            name: '',
+            rules: [],
+            limitations: [],
+            costs: [],
+            source: ''
+          })
         : undefined,
       technology: asString(map.technology) as World['technology'],
       economy: safeJsonParse<Economy>(map.economy, { currency: '', resources: [], trade: '', occupations: [] }),

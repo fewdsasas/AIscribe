@@ -98,6 +98,51 @@ describe('Database', () => {
       db.deleteProject(tempId)
       expect(db.getProject(tempId)).toBeNull()
     })
+
+    it('should invalidate novel and chapter caches after project deletion', () => {
+      const projectId = testId()
+      const novelId = testId()
+      const chapterId = testId()
+
+      db.createProject({
+        id: projectId,
+        name: '缓存测试项目',
+        description: '',
+        genre: 'fantasy',
+        status: 'planning',
+        wordCount: 0
+      })
+      db.createNovel({
+        id: novelId,
+        projectId,
+        title: '缓存测试小说',
+        author: '',
+        synopsis: '',
+        genre: 'fantasy',
+        tags: [],
+        targetAudience: ''
+      })
+      db.createChapter({
+        id: chapterId,
+        novelId,
+        title: '缓存测试章节',
+        content: '内容',
+        sortOrder: 1,
+        wordCount: 10,
+        status: 'draft'
+      })
+
+      // Populate caches
+      expect(db.getNovel(novelId)).not.toBeNull()
+      expect(db.getChapter(chapterId)).not.toBeNull()
+
+      // Cascade delete should invalidate caches
+      db.deleteProject(projectId)
+
+      expect(db.getProject(projectId)).toBeNull()
+      expect(db.getNovel(novelId)).toBeNull()
+      expect(db.getChapter(chapterId)).toBeNull()
+    })
   })
 
   describe('Novel CRUD', () => {

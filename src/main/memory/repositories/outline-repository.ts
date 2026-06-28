@@ -22,8 +22,30 @@ export class OutlineRepository extends BaseRepository implements IOutlineReposit
   }
 
   save(data: Partial<Omit<Outline, 'id' | 'createdAt' | 'updatedAt'>> & { id?: string }): Outline {
-    const id = data.id ?? uuid()
+    if (!data.novelId) throw new Error('novelId 不能为空')
     const nowStr = now()
+    const existing = data.novelId ? this.getByNovel(data.novelId) : null
+
+    if (existing) {
+      const outline: Outline = {
+        ...existing,
+        type: data.type ?? existing.type,
+        content: data.content ?? existing.content,
+        structure: data.structure ?? existing.structure,
+        version: existing.version + 1,
+        updatedAt: nowStr
+      }
+      this.run(
+        `UPDATE outlines
+         SET type = ?, content = ?, structure = ?, version = ?, updated_at = ?
+         WHERE id = ?`,
+        [outline.type, outline.content, JSON.stringify(outline.structure), outline.version, nowStr, existing.id]
+      )
+      this.scheduleSave()
+      return outline
+    }
+
+    const id = data.id ?? uuid()
     const outline: Outline = {
       id,
       novelId: data.novelId ?? '',
@@ -34,8 +56,8 @@ export class OutlineRepository extends BaseRepository implements IOutlineReposit
       createdAt: nowStr,
       updatedAt: nowStr
     }
-    this.sqlDb.run(
-      `INSERT OR REPLACE INTO outlines (id, novel_id, type, content, structure, version, created_at, updated_at)
+    this.run(
+      `INSERT INTO outlines (id, novel_id, type, content, structure, version, created_at, updated_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       [
         id,

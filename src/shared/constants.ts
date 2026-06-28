@@ -26,3 +26,11 @@ export const DEFAULT_ENDPOINTS: Record<string, string> = {
   wenxin: 'https://aip.baidubce.com/rpc/2.0/ai_custom/v1/wenxinworkshop/chat',
   tongyi: 'https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation'
 }
+
+export const DEFAULT_MODELS: Record<string, string> = {
+  openai: 'gpt-4o',
+  claude: 'claude-sonnet-4-20250514',
+  mimo: 'mimo-7b',
+  wenxin: 'ernie-bot-4',
+  tongyi: 'qwen-max'
+}

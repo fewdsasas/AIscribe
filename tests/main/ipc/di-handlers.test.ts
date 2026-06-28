@@ -17,7 +17,6 @@ import {
   SKILL_LOADER_TOKEN
 } from '../../../src/main/di'
 import type { IDatabase, ILearningEngine, ILLMProvider, ISkillLoader } from '../../../src/main/di'
-import { IPC_CHANNELS } from '../../../src/shared/types/ipc'
 
 // Handlers to verify
 import { registerProjectHandlers } from '../../../src/main/ipc/project.ipc'
@@ -92,7 +91,9 @@ function createMockDatabase(): IDatabase {
     createNovel: vi.fn().mockReturnValue({ id: 'n1', projectId: 'p1', title: 'Mock', createdAt: '', updatedAt: '' }),
     getNovel: vi.fn().mockReturnValue(null),
     getNovelByProject: vi.fn().mockReturnValue(null),
-    createChapter: vi.fn().mockReturnValue({ id: 'c1', novelId: 'n1', title: 'Mock', content: '', createdAt: '', updatedAt: '' }),
+    createChapter: vi
+      .fn()
+      .mockReturnValue({ id: 'c1', novelId: 'n1', title: 'Mock', content: '', createdAt: '', updatedAt: '' }),
     listChapters: vi.fn().mockReturnValue([]),
     listChaptersWithContent: vi.fn().mockReturnValue([]),
     getChapter: vi.fn().mockReturnValue(null),
@@ -104,13 +105,17 @@ function createMockDatabase(): IDatabase {
     getWorldByNovel: vi.fn().mockReturnValue(null),
     saveWorld: vi.fn().mockReturnValue({ id: 'w1', novelId: 'n1', createdAt: '', updatedAt: '' }),
     getPlotStructureByNovel: vi.fn().mockReturnValue(null),
-    savePlotStructure: vi.fn().mockReturnValue({ id: 'ps1', novelId: 'n1', framework: '', beats: [], createdAt: '', updatedAt: '' }),
+    savePlotStructure: vi
+      .fn()
+      .mockReturnValue({ id: 'ps1', novelId: 'n1', framework: '', beats: [], createdAt: '', updatedAt: '' }),
     getOutline: vi.fn().mockReturnValue(null),
     saveOutline: vi.fn().mockReturnValue({ id: 'o1', novelId: 'n1', sections: [], createdAt: '', updatedAt: '' }),
     createCheckpoint: vi.fn().mockReturnValue({ id: 'cp1', projectId: 'p1', name: '', createdAt: '' }),
     listCheckpoints: vi.fn().mockReturnValue([]),
     getCheckpointSnapshot: vi.fn().mockReturnValue(null),
-    createSessionMemory: vi.fn().mockReturnValue({ id: 'sm1', projectId: 'p1', query: '', response: '', createdAt: '', updatedAt: '' }),
+    createSessionMemory: vi
+      .fn()
+      .mockReturnValue({ id: 'sm1', projectId: 'p1', query: '', response: '', createdAt: '', updatedAt: '' }),
     listSessionMemories: vi.fn().mockReturnValue([]),
     writerModels: { getByWriterId: vi.fn(), save: vi.fn() },
     trajectories: {
@@ -121,9 +126,25 @@ function createMockDatabase(): IDatabase {
       detectPatterns: vi.fn().mockReturnValue([]),
       searchMemory: vi.fn().mockReturnValue([])
     },
-    projects: { create: vi.fn(), getById: vi.fn(), list: vi.fn(), listWithStats: vi.fn(), update: vi.fn(), delete: vi.fn(), batchCreate: vi.fn() },
+    projects: {
+      create: vi.fn(),
+      getById: vi.fn(),
+      list: vi.fn(),
+      listWithStats: vi.fn(),
+      update: vi.fn(),
+      delete: vi.fn(),
+      batchCreate: vi.fn()
+    },
     novels: { create: vi.fn(), getById: vi.fn(), getByProject: vi.fn() },
-    chapters: { create: vi.fn(), listByNovel: vi.fn(), listByNovelWithContent: vi.fn(), getById: vi.fn(), update: vi.fn(), getChapterCounts: vi.fn(), batchCreate: vi.fn() },
+    chapters: {
+      create: vi.fn(),
+      listByNovel: vi.fn(),
+      listByNovelWithContent: vi.fn(),
+      getById: vi.fn(),
+      update: vi.fn(),
+      getChapterCounts: vi.fn(),
+      batchCreate: vi.fn()
+    },
     characters: { create: vi.fn(), listByNovel: vi.fn() },
     worlds: { getByNovel: vi.fn(), save: vi.fn() },
     plotStructures: { getByNovel: vi.fn(), save: vi.fn() },
@@ -139,6 +160,7 @@ function createMockLLMProvider(): ILLMProvider {
     configure: vi.fn(),
     resetConfig: vi.fn(),
     chat: vi.fn().mockResolvedValue({ content: '', usage: undefined }),
+    testConnection: vi.fn().mockResolvedValue(true),
     chatStream: vi.fn().mockResolvedValue(undefined),
     cancelStream: vi.fn().mockReturnValue(true)
   }
@@ -155,7 +177,9 @@ function createMockSkillLoader(): ISkillLoader {
 function createMockLearningEngine(): ILearningEngine {
   return {
     recordInteraction: vi.fn().mockResolvedValue(undefined),
-    analyzeProject: vi.fn().mockResolvedValue({ patterns: [], suggestions: [], profile: {} as never, nextActions: [], shortcuts: [] }),
+    analyzeProject: vi
+      .fn()
+      .mockResolvedValue({ patterns: [], suggestions: [], profile: {} as never, nextActions: [], shortcuts: [] }),
     getProjectSummary: vi.fn().mockReturnValue({}),
     getRecorder: vi.fn().mockReturnValue({ record: vi.fn() } as never),
     close: vi.fn()
@@ -173,49 +197,49 @@ describe('IPC handler dependency injection', () => {
       name: 'project',
       register: registerProjectHandlers,
       expectedTokens: [DATABASE_TOKEN],
-      invoke: { channel: IPC_CHANNELS.PROJECT_GET, args: [VALID_UUID] }
+      invoke: { channel: 'project:get', args: [VALID_UUID] }
     },
     {
       name: 'novel',
       register: registerNovelHandlers,
       expectedTokens: [DATABASE_TOKEN],
-      invoke: { channel: IPC_CHANNELS.NOVEL_GET, args: [VALID_UUID] }
+      invoke: { channel: 'novel:get', args: [VALID_UUID] }
     },
     {
       name: 'character',
       register: registerCharacterHandlers,
       expectedTokens: [DATABASE_TOKEN],
-      invoke: { channel: IPC_CHANNELS.CHARACTER_LIST, args: [VALID_UUID] }
+      invoke: { channel: 'character:list', args: [VALID_UUID] }
     },
     {
       name: 'world',
       register: registerWorldHandlers,
       expectedTokens: [DATABASE_TOKEN],
-      invoke: { channel: IPC_CHANNELS.WORLD_GET_BY_NOVEL, args: [VALID_UUID] }
+      invoke: { channel: 'world:get-by-novel', args: [VALID_UUID] }
     },
     {
       name: 'checkpoint',
       register: registerCheckpointHandlers,
       expectedTokens: [DATABASE_TOKEN],
-      invoke: { channel: IPC_CHANNELS.CHECKPOINT_LIST, args: [VALID_UUID] }
+      invoke: { channel: 'checkpoint:list', args: [VALID_UUID] }
     },
     {
       name: 'writer',
       register: registerWriterHandlers,
       expectedTokens: [DATABASE_TOKEN],
-      invoke: { channel: IPC_CHANNELS.WRITER_MODEL_GET, args: [VALID_UUID] }
+      invoke: { channel: 'writer-model:get', args: [VALID_UUID] }
     },
     {
       name: 'skill',
       register: registerSkillHandlers,
       expectedTokens: [SKILL_LOADER_TOKEN],
-      invoke: { channel: IPC_CHANNELS.SKILL_LIST, args: [] }
+      invoke: { channel: 'skill:list', args: [] }
     },
     {
       name: 'chat',
       register: registerChatHandlers,
       expectedTokens: [LLM_PROVIDER_TOKEN],
-      invoke: { channel: IPC_CHANNELS.LLM_CHAT, args: [{ messages: [{ role: 'user', content: 'hi' }] }] }
+      invoke: { channel: 'llm:chat', args: [{ messages: [{ role: 'user', content: 'hi' }] }] }
     },
     {
       name: 'llm-config',
@@ -226,19 +250,19 @@ describe('IPC handler dependency injection', () => {
       name: 'learning',
       register: registerLearningHandlers,
       expectedTokens: [LEARNING_ENGINE_TOKEN],
-      invoke: { channel: IPC_CHANNELS.LEARNING_SUMMARY, args: [VALID_UUID] }
+      invoke: { channel: 'learning:summary', args: [VALID_UUID] }
     },
     {
       name: 'db',
       register: registerDbHandlers,
       expectedTokens: [DATABASE_TOKEN],
-      invoke: { channel: IPC_CHANNELS.DB_TABLES, args: [] }
+      invoke: { channel: 'db:tables', args: [] }
     },
     {
       name: 'export',
       register: registerExportHandlers,
       expectedTokens: [DATABASE_TOKEN],
-      invoke: { channel: IPC_CHANNELS.EXPORT_PROJECT, args: [{ projectId: VALID_UUID, format: 'markdown' }] }
+      invoke: { channel: 'export:project', args: [{ projectId: VALID_UUID, format: 'markdown' }] }
     },
     { name: 'storage', register: registerStorageHandlers, expectedTokens: [] },
     { name: 'monitor', register: registerMonitorHandlers, expectedTokens: [] }
@@ -248,26 +272,29 @@ describe('IPC handler dependency injection', () => {
     vi.clearAllMocks()
   })
 
-  it.each(cases)('$name handler resolves dependencies via ServiceRegistry', async ({ register, expectedTokens, invoke }) => {
-    const ipcMain = createMockIpcMain()
-    const { registry, resolved } = createSpyRegistry()
-    registry.set(DATABASE_TOKEN, createMockDatabase())
-    registry.set(LLM_PROVIDER_TOKEN, createMockLLMProvider())
-    registry.set(SKILL_LOADER_TOKEN, createMockSkillLoader())
-    registry.set(LEARNING_ENGINE_TOKEN, createMockLearningEngine())
+  it.each(cases)(
+    '$name handler resolves dependencies via ServiceRegistry',
+    async ({ register, expectedTokens, invoke }) => {
+      const ipcMain = createMockIpcMain()
+      const { registry, resolved } = createSpyRegistry()
+      registry.set(DATABASE_TOKEN, createMockDatabase())
+      registry.set(LLM_PROVIDER_TOKEN, createMockLLMProvider())
+      registry.set(SKILL_LOADER_TOKEN, createMockSkillLoader())
+      registry.set(LEARNING_ENGINE_TOKEN, createMockLearningEngine())
 
-    expect(() => register(ipcMain, registry)).not.toThrow()
+      expect(() => register(ipcMain, registry)).not.toThrow()
 
-    if (invoke) {
-      const handler = ipcMain.handlers.get(invoke.channel)
-      expect(handler).toBeDefined()
-      // Invoke handler; ignore downstream errors — we only care that services were resolved.
-      const call = handler as (...args: unknown[]) => unknown
-      await Promise.resolve(call(null, ...invoke.args)).catch(() => undefined)
+      if (invoke) {
+        const handler = ipcMain.handlers.get(invoke.channel)
+        expect(handler).toBeDefined()
+        // Invoke handler; ignore downstream errors — we only care that services were resolved.
+        const call = handler as (...args: unknown[]) => unknown
+        await Promise.resolve(call(null, ...invoke.args)).catch(() => undefined)
+      }
+
+      for (const token of expectedTokens) {
+        expect(resolved).toContain(token)
+      }
     }
-
-    for (const token of expectedTokens) {
-      expect(resolved).toContain(token)
-    }
-  })
+  )
 })

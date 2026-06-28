@@ -1,5 +1,4 @@
 import type { IpcMain } from 'electron'
-import { IPC_CHANNELS } from '../../shared/types/ipc'
 import { DATABASE_TOKEN, requireId, requireNonEmptyString, requireObject, wrap } from './index'
 import type { ServiceRegistry } from '../di'
 import type { IDatabase } from '../di'
@@ -7,16 +6,17 @@ import type { CreateCheckpointData, CreateSessionData } from '../../shared/types
 
 export function registerCheckpointHandlers(ipcMain: IpcMain, services: ServiceRegistry): void {
   ipcMain.handle(
-    IPC_CHANNELS.CHECKPOINT_CREATE,
+    'checkpoint:create',
     wrap(async (data: CreateCheckpointData) => {
       requireObject(data, '检查点数据')
       requireNonEmptyString(data.label, '检查点标签')
+      requireId(data.projectId, '项目ID')
       const d = await services.resolveAsync<IDatabase>(DATABASE_TOKEN)
       return d.createCheckpoint(data)
     })
   )
   ipcMain.handle(
-    IPC_CHANNELS.CHECKPOINT_LIST,
+    'checkpoint:list',
     wrap(async (projectId: string) => {
       requireId(projectId, '项目ID')
       const d = await services.resolveAsync<IDatabase>(DATABASE_TOKEN)
@@ -24,7 +24,7 @@ export function registerCheckpointHandlers(ipcMain: IpcMain, services: ServiceRe
     })
   )
   ipcMain.handle(
-    IPC_CHANNELS.CHECKPOINT_RESTORE,
+    'checkpoint:restore',
     wrap(async (id: string) => {
       requireId(id, '检查点ID')
       const d = await services.resolveAsync<IDatabase>(DATABASE_TOKEN)
@@ -33,16 +33,17 @@ export function registerCheckpointHandlers(ipcMain: IpcMain, services: ServiceRe
   )
 
   ipcMain.handle(
-    IPC_CHANNELS.SESSION_CREATE,
+    'session:create',
     wrap(async (data: CreateSessionData) => {
       requireObject(data, '会话数据')
+      requireId(data.projectId, '项目ID')
       // sessionId is optional, generated if not provided
       const d = await services.resolveAsync<IDatabase>(DATABASE_TOKEN)
       return d.createSessionMemory(data)
     })
   )
   ipcMain.handle(
-    IPC_CHANNELS.SESSION_LIST,
+    'session:list',
     wrap(async (projectId: string) => {
       requireId(projectId, '项目ID')
       const d = await services.resolveAsync<IDatabase>(DATABASE_TOKEN)

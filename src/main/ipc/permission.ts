@@ -1,5 +1,4 @@
 import type { IpcMainInvokeEvent } from 'electron'
-import { IPC_CHANNELS } from '@shared/types/ipc'
 import { logger } from '../utils/logger'
 
 export type Permission = 'read' | 'write' | 'admin'
@@ -10,70 +9,71 @@ interface PermissionRule {
 }
 
 const PERMISSION_RULES: PermissionRule[] = [
-  { channel: IPC_CHANNELS.PROJECT_CREATE, permission: 'write' },
-  { channel: IPC_CHANNELS.PROJECT_LIST, permission: 'read' },
-  { channel: IPC_CHANNELS.PROJECT_DASHBOARD_STATS, permission: 'read' },
-  { channel: IPC_CHANNELS.PROJECT_GET, permission: 'read' },
-  { channel: IPC_CHANNELS.PROJECT_UPDATE, permission: 'write' },
-  { channel: IPC_CHANNELS.PROJECT_DELETE, permission: 'admin' },
+  { channel: 'project:create', permission: 'write' },
+  { channel: 'project:list', permission: 'read' },
+  { channel: 'project:dashboard-stats', permission: 'read' },
+  { channel: 'project:get', permission: 'read' },
+  { channel: 'project:update', permission: 'write' },
+  { channel: 'project:delete', permission: 'admin' },
 
-  { channel: IPC_CHANNELS.NOVEL_CREATE, permission: 'write' },
-  { channel: IPC_CHANNELS.NOVEL_GET, permission: 'read' },
-  { channel: IPC_CHANNELS.NOVEL_GET_BY_PROJECT, permission: 'read' },
+  { channel: 'novel:create', permission: 'write' },
+  { channel: 'novel:get', permission: 'read' },
+  { channel: 'novel:get-by-project', permission: 'read' },
 
-  { channel: IPC_CHANNELS.CHAPTER_CREATE, permission: 'write' },
-  { channel: IPC_CHANNELS.CHAPTER_LIST, permission: 'read' },
-  { channel: IPC_CHANNELS.CHAPTER_LIST_WITH_CONTENT, permission: 'read' },
-  { channel: IPC_CHANNELS.CHAPTER_GET, permission: 'read' },
-  { channel: IPC_CHANNELS.CHAPTER_UPDATE, permission: 'write' },
-  { channel: IPC_CHANNELS.CHAPTER_COUNTS, permission: 'read' },
+  { channel: 'chapter:create', permission: 'write' },
+  { channel: 'chapter:list', permission: 'read' },
+  { channel: 'chapter:list-with-content', permission: 'read' },
+  { channel: 'chapter:get', permission: 'read' },
+  { channel: 'chapter:update', permission: 'write' },
+  { channel: 'chapter:counts', permission: 'read' },
 
-  { channel: IPC_CHANNELS.CHARACTER_CREATE, permission: 'write' },
-  { channel: IPC_CHANNELS.CHARACTER_LIST, permission: 'read' },
+  { channel: 'character:create', permission: 'write' },
+  { channel: 'character:list', permission: 'read' },
 
-  { channel: IPC_CHANNELS.PLOT_STRUCTURE_GET_BY_NOVEL, permission: 'read' },
-  { channel: IPC_CHANNELS.PLOT_STRUCTURE_SAVE, permission: 'write' },
-  { channel: IPC_CHANNELS.WORLD_GET_BY_NOVEL, permission: 'read' },
-  { channel: IPC_CHANNELS.WORLD_SAVE, permission: 'write' },
+  { channel: 'plot-structure:get-by-novel', permission: 'read' },
+  { channel: 'plot-structure:save', permission: 'write' },
+  { channel: 'world:get-by-novel', permission: 'read' },
+  { channel: 'world:save', permission: 'write' },
 
-  { channel: IPC_CHANNELS.OUTLINE_GET, permission: 'read' },
-  { channel: IPC_CHANNELS.OUTLINE_SAVE, permission: 'write' },
+  { channel: 'outline:get', permission: 'read' },
+  { channel: 'outline:save', permission: 'write' },
 
-  { channel: IPC_CHANNELS.CHECKPOINT_CREATE, permission: 'write' },
-  { channel: IPC_CHANNELS.CHECKPOINT_LIST, permission: 'read' },
-  { channel: IPC_CHANNELS.CHECKPOINT_RESTORE, permission: 'write' },
+  { channel: 'checkpoint:create', permission: 'write' },
+  { channel: 'checkpoint:list', permission: 'read' },
+  { channel: 'checkpoint:restore', permission: 'write' },
 
-  { channel: IPC_CHANNELS.SESSION_CREATE, permission: 'write' },
-  { channel: IPC_CHANNELS.SESSION_LIST, permission: 'read' },
+  { channel: 'session:create', permission: 'write' },
+  { channel: 'session:list', permission: 'read' },
 
-  { channel: IPC_CHANNELS.SKILL_LIST, permission: 'read' },
-  { channel: IPC_CHANNELS.SKILL_GET, permission: 'read' },
-  { channel: IPC_CHANNELS.SKILL_INVOKE, permission: 'write' },
+  { channel: 'skill:list', permission: 'read' },
+  { channel: 'skill:get', permission: 'read' },
+  { channel: 'skill:invoke', permission: 'write' },
 
-  { channel: IPC_CHANNELS.LEARNING_RECORD, permission: 'write' },
-  { channel: IPC_CHANNELS.LEARNING_ANALYZE, permission: 'read' },
-  { channel: IPC_CHANNELS.LEARNING_SUMMARY, permission: 'read' },
-  { channel: IPC_CHANNELS.MEMORY_SEARCH, permission: 'read' },
+  { channel: 'learning:record', permission: 'write' },
+  { channel: 'learning:analyze', permission: 'read' },
+  { channel: 'learning:summary', permission: 'read' },
+  { channel: 'memory:search', permission: 'read' },
 
-  { channel: IPC_CHANNELS.WRITER_MODEL_GET, permission: 'read' },
-  { channel: IPC_CHANNELS.WRITER_MODEL_SAVE, permission: 'write' },
+  { channel: 'writer-model:get', permission: 'read' },
+  { channel: 'writer-model:save', permission: 'write' },
 
-  { channel: IPC_CHANNELS.DB_TABLES, permission: 'admin' },
+  { channel: 'db:tables', permission: 'admin' },
 
-  { channel: IPC_CHANNELS.EXPORT_PROJECT, permission: 'read' },
+  { channel: 'export:project', permission: 'read' },
 
-  { channel: IPC_CHANNELS.LLM_CHAT, permission: 'write' },
-  { channel: IPC_CHANNELS.LLM_CONFIG, permission: 'admin' },
-  { channel: IPC_CHANNELS.LLM_IS_CONFIGURED, permission: 'read' },
-  { channel: IPC_CHANNELS.LLM_CONFIG_META, permission: 'read' },
-  { channel: IPC_CHANNELS.LLM_CHAT_STREAM, permission: 'write' },
-  { channel: IPC_CHANNELS.LLM_CANCEL_STREAM, permission: 'write' },
+  { channel: 'llm:chat', permission: 'write' },
+  { channel: 'llm:config', permission: 'admin' },
+  { channel: 'llm:is-configured', permission: 'read' },
+  { channel: 'llm:config-meta', permission: 'read' },
+  { channel: 'llm:test-connection', permission: 'write' },
+  { channel: 'llm:chat-stream', permission: 'write' },
+  { channel: 'llm:cancel-stream', permission: 'write' },
 
-  { channel: IPC_CHANNELS.STORAGE_ENCRYPT_SET, permission: 'write' },
-  { channel: IPC_CHANNELS.STORAGE_ENCRYPT_GET, permission: 'read' },
-  { channel: IPC_CHANNELS.STORAGE_ENCRYPT_REMOVE, permission: 'write' },
+  { channel: 'storage:encryptSet', permission: 'write' },
+  { channel: 'storage:encryptGet', permission: 'read' },
+  { channel: 'storage:encryptRemove', permission: 'write' },
 
-  { channel: IPC_CHANNELS.MONITOR_MEMORY_USAGE, permission: 'read' }
+  { channel: 'monitor:memory-usage', permission: 'read' }
 ]
 
 class PermissionManager {

@@ -2,7 +2,6 @@ import type { IpcMain } from 'electron'
 import { app } from 'electron'
 import * as fs from 'fs'
 import * as path from 'path'
-import { IPC_CHANNELS } from '../../shared/types/ipc'
 import { wrap } from './index'
 import { logger } from '../utils/logger'
 import type { ServiceRegistry } from '../di'
@@ -21,7 +20,7 @@ let monitorTimer: NodeJS.Timeout | null = null
  */
 export function registerMonitorHandlers(ipcMain: IpcMain, _services: ServiceRegistry): void {
   ipcMain.handle(
-    IPC_CHANNELS.MONITOR_MEMORY_USAGE,
+    'monitor:memory-usage',
     wrap(() => {
       const memUsage = process.memoryUsage()
       const dbPath = path.join(app.getPath('userData'), 'aiscribe.db')

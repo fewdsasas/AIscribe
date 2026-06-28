@@ -128,10 +128,7 @@ describe('LLM Streaming Stress Tests', () => {
       const onChunk = vi.fn()
       const onDone = vi.fn()
       const onError = vi.fn()
-      const promise = provider.chatStream(
-        { messages: [{ role: 'user', content: 'Hi' }] },
-        { onChunk, onDone, onError }
-      )
+      const promise = provider.chatStream({ messages: [{ role: 'user', content: 'Hi' }] }, { onChunk, onDone, onError })
       return { promise, onChunk, onDone, onError }
     })
 

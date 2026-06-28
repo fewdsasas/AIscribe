@@ -1,5 +1,4 @@
 import { contextBridge, ipcRenderer } from 'electron'
-import { IPC_CHANNELS } from '../shared/types/ipc'
 import type {
   CreateChapterData,
   CreateCharacterData,
@@ -29,116 +28,117 @@ let llmErrorHandler: ((_event: Electron.IpcRendererEvent, data: { message: strin
 
 function cleanupLLMListeners(): void {
   if (llmChunkHandler) {
-    ipcRenderer.removeListener(IPC_CHANNELS.LLM_CHUNK, llmChunkHandler)
+    ipcRenderer.removeListener('llm:chunk', llmChunkHandler)
     llmChunkHandler = null
   }
   if (llmDoneHandler) {
-    ipcRenderer.removeListener(IPC_CHANNELS.LLM_DONE, llmDoneHandler)
+    ipcRenderer.removeListener('llm:done', llmDoneHandler)
     llmDoneHandler = null
   }
   if (llmErrorHandler) {
-    ipcRenderer.removeListener(IPC_CHANNELS.LLM_ERROR, llmErrorHandler)
+    ipcRenderer.removeListener('llm:error', llmErrorHandler)
     llmErrorHandler = null
   }
 }
 
 const api = {
-  projectCreate: (data: CreateProjectData) => ipcRenderer.invoke(IPC_CHANNELS.PROJECT_CREATE, data),
-  projectList: () => ipcRenderer.invoke(IPC_CHANNELS.PROJECT_LIST),
-  projectDashboardStats: () => ipcRenderer.invoke(IPC_CHANNELS.PROJECT_DASHBOARD_STATS),
-  projectGet: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.PROJECT_GET, id),
-  projectUpdate: (id: string, data: UpdateProjectData) => ipcRenderer.invoke(IPC_CHANNELS.PROJECT_UPDATE, id, data),
-  projectDelete: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.PROJECT_DELETE, id),
+  projectCreate: (data: CreateProjectData) => ipcRenderer.invoke('project:create', data),
+  projectList: () => ipcRenderer.invoke('project:list'),
+  projectDashboardStats: () => ipcRenderer.invoke('project:dashboard-stats'),
+  projectGet: (id: string) => ipcRenderer.invoke('project:get', id),
+  projectUpdate: (id: string, data: UpdateProjectData) => ipcRenderer.invoke('project:update', id, data),
+  projectDelete: (id: string) => ipcRenderer.invoke('project:delete', id),
 
-  novelCreate: (data: CreateNovelData) => ipcRenderer.invoke(IPC_CHANNELS.NOVEL_CREATE, data),
-  novelGet: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.NOVEL_GET, id),
-  novelGetByProject: (projectId: string) => ipcRenderer.invoke(IPC_CHANNELS.NOVEL_GET_BY_PROJECT, projectId),
+  novelCreate: (data: CreateNovelData) => ipcRenderer.invoke('novel:create', data),
+  novelGet: (id: string) => ipcRenderer.invoke('novel:get', id),
+  novelGetByProject: (projectId: string) => ipcRenderer.invoke('novel:get-by-project', projectId),
 
-  chapterCreate: (data: CreateChapterData) => ipcRenderer.invoke(IPC_CHANNELS.CHAPTER_CREATE, data),
-  chapterList: (novelId: string) => ipcRenderer.invoke(IPC_CHANNELS.CHAPTER_LIST, novelId),
-  chapterListWithContent: (novelId: string) => ipcRenderer.invoke(IPC_CHANNELS.CHAPTER_LIST_WITH_CONTENT, novelId),
-  chapterGet: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.CHAPTER_GET, id),
-  chapterUpdate: (id: string, data: UpdateChapterData) => ipcRenderer.invoke(IPC_CHANNELS.CHAPTER_UPDATE, id, data),
-  chapterCounts: (novelIds: string[]) => ipcRenderer.invoke(IPC_CHANNELS.CHAPTER_COUNTS, novelIds),
+  chapterCreate: (data: CreateChapterData) => ipcRenderer.invoke('chapter:create', data),
+  chapterList: (novelId: string) => ipcRenderer.invoke('chapter:list', novelId),
+  chapterListWithContent: (novelId: string) => ipcRenderer.invoke('chapter:list-with-content', novelId),
+  chapterGet: (id: string) => ipcRenderer.invoke('chapter:get', id),
+  chapterUpdate: (id: string, data: UpdateChapterData) => ipcRenderer.invoke('chapter:update', id, data),
+  chapterCounts: (novelIds: string[]) => ipcRenderer.invoke('chapter:counts', novelIds),
 
-  characterCreate: (data: CreateCharacterData) => ipcRenderer.invoke(IPC_CHANNELS.CHARACTER_CREATE, data),
-  characterList: (novelId: string) => ipcRenderer.invoke(IPC_CHANNELS.CHARACTER_LIST, novelId),
+  characterCreate: (data: CreateCharacterData) => ipcRenderer.invoke('character:create', data),
+  characterList: (novelId: string) => ipcRenderer.invoke('character:list', novelId),
 
-  plotStructureGetByNovel: (novelId: string) => ipcRenderer.invoke(IPC_CHANNELS.PLOT_STRUCTURE_GET_BY_NOVEL, novelId),
-  plotStructureSave: (data: SavePlotStructureData) => ipcRenderer.invoke(IPC_CHANNELS.PLOT_STRUCTURE_SAVE, data),
+  plotStructureGetByNovel: (novelId: string) => ipcRenderer.invoke('plot-structure:get-by-novel', novelId),
+  plotStructureSave: (data: SavePlotStructureData) => ipcRenderer.invoke('plot-structure:save', data),
 
-  worldGetByNovel: (novelId: string) => ipcRenderer.invoke(IPC_CHANNELS.WORLD_GET_BY_NOVEL, novelId),
-  worldSave: (data: SaveWorldData) => ipcRenderer.invoke(IPC_CHANNELS.WORLD_SAVE, data),
+  worldGetByNovel: (novelId: string) => ipcRenderer.invoke('world:get-by-novel', novelId),
+  worldSave: (data: SaveWorldData) => ipcRenderer.invoke('world:save', data),
 
-  checkpointCreate: (data: CreateCheckpointData) => ipcRenderer.invoke(IPC_CHANNELS.CHECKPOINT_CREATE, data),
-  checkpointList: (projectId: string) => ipcRenderer.invoke(IPC_CHANNELS.CHECKPOINT_LIST, projectId),
-  checkpointRestore: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.CHECKPOINT_RESTORE, id),
+  checkpointCreate: (data: CreateCheckpointData) => ipcRenderer.invoke('checkpoint:create', data),
+  checkpointList: (projectId: string) => ipcRenderer.invoke('checkpoint:list', projectId),
+  checkpointRestore: (id: string) => ipcRenderer.invoke('checkpoint:restore', id),
 
-  sessionCreate: (data: CreateSessionData) => ipcRenderer.invoke(IPC_CHANNELS.SESSION_CREATE, data),
-  sessionList: (projectId: string) => ipcRenderer.invoke(IPC_CHANNELS.SESSION_LIST, projectId),
+  sessionCreate: (data: CreateSessionData) => ipcRenderer.invoke('session:create', data),
+  sessionList: (projectId: string) => ipcRenderer.invoke('session:list', projectId),
 
-  skillList: () => ipcRenderer.invoke(IPC_CHANNELS.SKILL_LIST),
-  skillGet: (name: string) => ipcRenderer.invoke(IPC_CHANNELS.SKILL_GET, name),
+  skillList: () => ipcRenderer.invoke('skill:list'),
+  skillGet: (name: string) => ipcRenderer.invoke('skill:get', name),
   skillInvoke: (name: string, input: { prompt: string }): Promise<SkillInvokeResult> =>
-    ipcRenderer.invoke(IPC_CHANNELS.SKILL_INVOKE, name, input),
+    ipcRenderer.invoke('skill:invoke', name, input),
 
-  learningRecord: (data: RecordLearningData) => ipcRenderer.invoke(IPC_CHANNELS.LEARNING_RECORD, data),
-  learningAnalyze: (projectId: string) => ipcRenderer.invoke(IPC_CHANNELS.LEARNING_ANALYZE, projectId),
-  learningSummary: (projectId: string) => ipcRenderer.invoke(IPC_CHANNELS.LEARNING_SUMMARY, projectId),
-  memorySearch: (projectId: string, query: string) => ipcRenderer.invoke(IPC_CHANNELS.MEMORY_SEARCH, projectId, query),
+  learningRecord: (data: RecordLearningData) => ipcRenderer.invoke('learning:record', data),
+  learningAnalyze: (projectId: string) => ipcRenderer.invoke('learning:analyze', projectId),
+  learningSummary: (projectId: string) => ipcRenderer.invoke('learning:summary', projectId),
+  memorySearch: (projectId: string, query: string) => ipcRenderer.invoke('memory:search', projectId, query),
 
-  outlineGet: (novelId: string) => ipcRenderer.invoke(IPC_CHANNELS.OUTLINE_GET, novelId),
-  outlineSave: (data: SaveOutlineData) => ipcRenderer.invoke(IPC_CHANNELS.OUTLINE_SAVE, data),
+  outlineGet: (novelId: string) => ipcRenderer.invoke('outline:get', novelId),
+  outlineSave: (data: SaveOutlineData) => ipcRenderer.invoke('outline:save', data),
 
-  writerModelGet: (writerId: string) => ipcRenderer.invoke(IPC_CHANNELS.WRITER_MODEL_GET, writerId),
-  writerModelSave: (profile: Record<string, unknown>) => ipcRenderer.invoke(IPC_CHANNELS.WRITER_MODEL_SAVE, profile),
+  writerModelGet: (writerId: string) => ipcRenderer.invoke('writer-model:get', writerId),
+  writerModelSave: (profile: Record<string, unknown>) => ipcRenderer.invoke('writer-model:save', profile),
 
-  llmChat: (request: LLMRequest): Promise<LLMResponse> => ipcRenderer.invoke(IPC_CHANNELS.LLM_CHAT, request),
-  llmConfig: (config: LLMConfig) => ipcRenderer.invoke(IPC_CHANNELS.LLM_CONFIG, config),
-  llmIsConfigured: () => ipcRenderer.invoke(IPC_CHANNELS.LLM_IS_CONFIGURED),
-  llmConfigMeta: () => ipcRenderer.invoke(IPC_CHANNELS.LLM_CONFIG_META),
-  startLLMStream: (request: LLMRequest) => ipcRenderer.invoke(IPC_CHANNELS.LLM_CHAT_STREAM, request),
-  cancelLLMStream: (requestId: string) => ipcRenderer.invoke(IPC_CHANNELS.LLM_CANCEL_STREAM, requestId),
+  llmChat: (request: LLMRequest): Promise<LLMResponse> => ipcRenderer.invoke('llm:chat', request),
+  llmConfig: (config: LLMConfig) => ipcRenderer.invoke('llm:config', config),
+  llmIsConfigured: () => ipcRenderer.invoke('llm:is-configured'),
+  llmConfigMeta: () => ipcRenderer.invoke('llm:config-meta'),
+  llmTestConnection: (config: LLMConfig) => ipcRenderer.invoke('llm:test-connection', config),
+  startLLMStream: (request: LLMRequest) => ipcRenderer.invoke('llm:chat-stream', request),
+  cancelLLMStream: (requestId: string) => ipcRenderer.invoke('llm:cancel-stream', requestId),
   onLLMChunk: (callback: (chunk: string) => void) => {
     if (llmChunkHandler) {
-      ipcRenderer.removeListener(IPC_CHANNELS.LLM_CHUNK, llmChunkHandler)
+      ipcRenderer.removeListener('llm:chunk', llmChunkHandler)
       llmChunkHandler = null
     }
     llmChunkHandler = (_event, data) => callback(data.text)
-    ipcRenderer.on(IPC_CHANNELS.LLM_CHUNK, llmChunkHandler)
+    ipcRenderer.on('llm:chunk', llmChunkHandler)
   },
   onLLMDone: (
     callback: (data: { usage?: { promptTokens: number; completionTokens: number; totalTokens: number } }) => void
   ) => {
     if (llmDoneHandler) {
-      ipcRenderer.removeListener(IPC_CHANNELS.LLM_DONE, llmDoneHandler)
+      ipcRenderer.removeListener('llm:done', llmDoneHandler)
       llmDoneHandler = null
     }
     llmDoneHandler = (_event, data) => callback(data)
-    ipcRenderer.on(IPC_CHANNELS.LLM_DONE, llmDoneHandler)
+    ipcRenderer.on('llm:done', llmDoneHandler)
   },
   onLLMError: (callback: (error: string) => void) => {
     if (llmErrorHandler) {
-      ipcRenderer.removeListener(IPC_CHANNELS.LLM_ERROR, llmErrorHandler)
+      ipcRenderer.removeListener('llm:error', llmErrorHandler)
       llmErrorHandler = null
     }
     llmErrorHandler = (_event, data) => callback(data.message)
-    ipcRenderer.on(IPC_CHANNELS.LLM_ERROR, llmErrorHandler)
+    ipcRenderer.on('llm:error', llmErrorHandler)
   },
   removeLLMListeners: () => cleanupLLMListeners(),
 
-  dbTables: () => ipcRenderer.invoke(IPC_CHANNELS.DB_TABLES),
+  dbTables: () => ipcRenderer.invoke('db:tables'),
 
   exportProject: (options: { projectId: string; format: string; includeSynopsis?: boolean }): Promise<ExportResult> =>
-    ipcRenderer.invoke(IPC_CHANNELS.EXPORT_PROJECT, options),
+    ipcRenderer.invoke('export:project', options),
 
   // Secure encrypted storage
-  secureStorageSet: (key: string, value: string) => ipcRenderer.invoke(IPC_CHANNELS.STORAGE_ENCRYPT_SET, key, value),
-  secureStorageGet: (key: string) => ipcRenderer.invoke(IPC_CHANNELS.STORAGE_ENCRYPT_GET, key),
-  secureStorageRemove: (key: string) => ipcRenderer.invoke(IPC_CHANNELS.STORAGE_ENCRYPT_REMOVE, key),
+  secureStorageSet: (key: string, value: string) => ipcRenderer.invoke('storage:encryptSet', key, value),
+  secureStorageGet: (key: string) => ipcRenderer.invoke('storage:encryptGet', key),
+  secureStorageRemove: (key: string) => ipcRenderer.invoke('storage:encryptRemove', key),
 
   // Memory monitoring
-  getMemoryUsage: () => ipcRenderer.invoke(IPC_CHANNELS.MONITOR_MEMORY_USAGE)
+  getMemoryUsage: () => ipcRenderer.invoke('monitor:memory-usage')
 }
 
 contextBridge.exposeInMainWorld('aiscribe', api)

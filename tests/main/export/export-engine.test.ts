@@ -197,6 +197,46 @@ describe('ExportEngine', () => {
     })
   })
 
+  describe('corrupted content fallback', () => {
+    it('should not leak JSON metadata when content is corrupted', async () => {
+      const db = createMockDb()
+      const corruptedChapters: Chapter[] = [
+        {
+          ...mockChapters[0],
+          content: '{"type":"doc","content":[{"type":"paragraph","content":[{"type":"text","text":"Readable text."}]}]' // missing closing brace
+        }
+      ]
+      db.listChaptersWithContent = vi.fn().mockReturnValue(corruptedChapters)
+
+      const engine = new ExportEngine(db)
+      const result = await engine.exportProject({
+        projectId: 'project-1',
+        format: 'txt'
+      })
+
+      expect(result.content).toContain('Readable text.')
+      expect(result.content).not.toContain('"type":"doc"')
+      expect(result.content).not.toContain('"type":"paragraph"')
+    })
+  })
+
+  describe('html paragraph structure', () => {
+    it('should wrap each paragraph in separate <p> tags', async () => {
+      const db = createMockDb()
+      const engine = new ExportEngine(db)
+
+      const result = await engine.exportProject({
+        projectId: 'project-1',
+        format: 'html'
+      })
+
+      const paragraphMatches = result.content.match(/<p>[^<]*<\/p>/g)
+      expect(paragraphMatches?.length).toBeGreaterThanOrEqual(2)
+      expect(result.content).toContain('<p>This is chapter 2 content.</p>')
+      expect(result.content).toContain('<p>With multiple paragraphs.</p>')
+    })
+  })
+
   describe('error handling', () => {
     it('should throw for unsupported format', async () => {
       const db = createMockDb()

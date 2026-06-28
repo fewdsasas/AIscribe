@@ -1,4 +1,6 @@
 import { InputRule, mergeAttributes, Node } from '@tiptap/core'
+import type { NodeType } from '@tiptap/pm/model'
+import type { EditorState, Transaction } from '@tiptap/pm/state'
 
 export interface SceneBlockAttributes {
   pov: string
@@ -13,6 +15,35 @@ declare module '@tiptap/core' {
       insertSceneBlock: (attrs?: Partial<SceneBlockAttributes>) => ReturnType
     }
   }
+}
+
+function getNextSceneNumber(state: EditorState): number {
+  let max = 0
+  state.doc.descendants(node => {
+    if (node.type.name === 'sceneBlock' && typeof node.attrs.sceneNumber === 'number') {
+      max = Math.max(max, node.attrs.sceneNumber)
+    }
+  })
+  return max + 1
+}
+
+export function insertSceneBlockFromInputRule(
+  state: EditorState,
+  range: { from: number; to: number },
+  type: NodeType,
+  _storage: { sceneCounter: number }
+): Transaction {
+  const { tr } = state
+  const start = range.from
+  const end = range.to
+
+  // Replace the matched text with a new scene block
+  tr.delete(start, end)
+
+  const node = type.create({ sceneNumber: getNextSceneNumber(state) }, state.schema.nodes.paragraph.create())
+
+  tr.insert(start, node)
+  return tr
 }
 
 export const NovelStructureExtension = Node.create<Record<string, never>, { sceneCounter: number }>({
@@ -123,12 +154,11 @@ export const NovelStructureExtension = Node.create<Record<string, never>, { scen
     return {
       insertSceneBlock:
         attrs =>
-        ({ commands }) => {
-          this.storage.sceneCounter++
+        ({ commands, state }) => {
           return commands.insertContent({
             type: this.name,
             attrs: {
-              sceneNumber: this.storage.sceneCounter,
+              sceneNumber: getNextSceneNumber(state),
               ...attrs
             },
             content: [
@@ -146,21 +176,7 @@ export const NovelStructureExtension = Node.create<Record<string, never>, { scen
       new InputRule({
         find: /^(?:---|___|\*\*\*)\s$/,
         handler: ({ state, range }) => {
-          const { tr } = state
-          const start = range.from
-          const end = range.to
-
-          // Replace the matched text with a new scene block
-          tr.delete(start, end)
-
-          this.storage.sceneCounter++
-
-          const node = this.type.create(
-            { sceneNumber: this.storage.sceneCounter },
-            state.schema.nodes.paragraph.create()
-          )
-
-          tr.insert(start - 1, node)
+          insertSceneBlockFromInputRule(state, range, this.type, this.storage)
         }
       })
     ]

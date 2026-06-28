@@ -1,48 +1,47 @@
 import { expect, test } from '@playwright/test'
+import { closeElectronApp, launchElectronApp } from './helpers/electron-app'
 
 /**
- * E2E test: Novel and chapter creation flow
- * Covers: Editor -> Create Chapter -> Edit Content
+ * E2E test: Novel and chapter editing flow
+ * Covers: Editor -> Default chapter -> Edit Content
  */
 
 test.describe('Novel & Chapter Flow', () => {
-  test.beforeEach(async ({ page }) => {
-    await page.goto('http://localhost:5173')
+  test.afterEach(async () => {
+    await closeElectronApp()
   })
 
-  test('should create a chapter within a novel', async ({ page }) => {
+  test('should create a project with a default chapter', async () => {
+    const app = await launchElectronApp()
+    const page = await app.firstWindow()
+
     // Create project
-    await page.click('text=+ 新建项目')
+    await page.getByRole('button', { name: /新建项目/ }).click()
     await page.fill('input[placeholder*="小说名称"]', 'Chapter Test')
-    await page.click('text=创建项目')
+    await page.getByRole('button', { name: '创建项目' }).click()
 
-    // Should be in editor, create a chapter
-    await page.click('text=新建章节')
-    await page.fill('input[placeholder*="章节标题"]', '第一章')
-    await page.click('text=确认')
-
-    // Chapter should appear
-    await expect(page.locator('text=第一章')).toBeVisible()
+    // Editor should load with a default chapter
+    await expect(page.locator('.topbar-project')).toHaveText('Chapter Test')
+    await expect(page.getByRole('combobox')).toBeVisible()
+    await expect(page.getByRole('heading', { name: '第一章' })).toBeVisible()
   })
 
-  test('should edit chapter content', async ({ page }) => {
-    // Create project with chapter
-    await page.click('text=+ 新建项目')
+  test('should edit chapter content', async () => {
+    const app = await launchElectronApp()
+    const page = await app.firstWindow()
+
+    // Create project
+    await page.getByRole('button', { name: /新建项目/ }).click()
     await page.fill('input[placeholder*="小说名称"]', 'Edit Test')
-    await page.click('text=创建项目')
+    await page.getByRole('button', { name: '创建项目' }).click()
 
-    // Create chapter
-    await page.click('text=新建章节')
-    await page.fill('input[placeholder*="章节标题"]', 'Prologue')
-    await page.click('text=确认')
-
-    // Click on chapter to edit
-    await page.click('text=Prologue')
+    // Wait for editor to load
+    await expect(page.locator('.topbar-project')).toHaveText('Edit Test')
 
     // Type in editor
     await page.fill('[contenteditable="true"]', 'Once upon a time...')
 
-    // Content should persist
+    // Content should persist in the DOM
     await expect(page.locator('text=Once upon a time...')).toBeVisible()
   })
 })

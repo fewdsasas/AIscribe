@@ -1,5 +1,4 @@
 import type { IpcMain } from 'electron'
-import { IPC_CHANNELS } from '../../shared/types/ipc'
 import { requireNonEmptyString, wrap } from './index'
 import { isLLMConfigKey, SecureConfig } from '../secure-config'
 import { MAX_STRING_LENGTH } from '../../shared/constants'
@@ -10,7 +9,7 @@ const KEY_PATTERN = /^[a-zA-Z][a-zA-Z0-9_-]{0,49}$/
 
 export function registerStorageHandlers(ipcMain: IpcMain, _services: ServiceRegistry): void {
   ipcMain.handle(
-    IPC_CHANNELS.STORAGE_ENCRYPT_SET,
+    'storage:encryptSet',
     wrap(async (key: string, value: string) => {
       requireNonEmptyString(key, '键名')
       if (!KEY_PATTERN.test(key)) throw new Error('键名格式无效')
@@ -30,7 +29,7 @@ export function registerStorageHandlers(ipcMain: IpcMain, _services: ServiceRegi
   )
 
   ipcMain.handle(
-    IPC_CHANNELS.STORAGE_ENCRYPT_GET,
+    'storage:encryptGet',
     wrap(async (key: string) => {
       requireNonEmptyString(key, '键名')
       if (isLLMConfigKey(key)) throw new Error('不允许通过通用存储读取 LLM 配置键')
@@ -47,7 +46,7 @@ export function registerStorageHandlers(ipcMain: IpcMain, _services: ServiceRegi
   )
 
   ipcMain.handle(
-    IPC_CHANNELS.STORAGE_ENCRYPT_REMOVE,
+    'storage:encryptRemove',
     wrap(async (key: string) => {
       requireNonEmptyString(key, '键名')
       if (isLLMConfigKey(key)) throw new Error('不允许通过通用存储删除 LLM 配置键')

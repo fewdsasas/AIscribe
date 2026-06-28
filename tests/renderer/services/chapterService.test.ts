@@ -10,7 +10,18 @@ describe('createChapterService', () => {
   it('should delegate list to api.chapterList', async () => {
     const api = createMockAiscribeAPI()
     const service = createChapterService(api)
-    const chapters: ChapterSummary[] = [{ id: 'c1', novelId: 'n1', title: 'Chapter 1', sortOrder: 0, wordCount: 0, status: 'draft', createdAt: '', updatedAt: '' }]
+    const chapters: ChapterSummary[] = [
+      {
+        id: 'c1',
+        novelId: 'n1',
+        title: 'Chapter 1',
+        sortOrder: 0,
+        wordCount: 0,
+        status: 'draft',
+        createdAt: '',
+        updatedAt: ''
+      }
+    ]
     vi.mocked(api.chapterList).mockResolvedValue(chapters)
 
     const result = await service.list('n1')
@@ -22,7 +33,17 @@ describe('createChapterService', () => {
   it('should delegate get to api.chapterGet', async () => {
     const api = createMockAiscribeAPI()
     const service = createChapterService(api)
-    const chapter: Chapter = { id: 'c1', novelId: 'n1', title: 'Chapter 1', content: '{}', sortOrder: 0, wordCount: 0, status: 'draft', createdAt: '', updatedAt: '' }
+    const chapter: Chapter = {
+      id: 'c1',
+      novelId: 'n1',
+      title: 'Chapter 1',
+      content: '{}',
+      sortOrder: 0,
+      wordCount: 0,
+      status: 'draft',
+      createdAt: '',
+      updatedAt: ''
+    }
     vi.mocked(api.chapterGet).mockResolvedValue(chapter)
 
     const result = await service.get('c1')

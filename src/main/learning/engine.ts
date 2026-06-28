@@ -15,20 +15,21 @@ export interface LearningAnalysis {
 export class LearningEngine {
   private recorder: TrajectoryRecorder
   private detector = new PatternDetector()
-  private writerUpdater = new WriterModelUpdater()
+  private writerUpdater: WriterModelUpdater
   private evolver = new SkillEvolver()
   private saveProfileCallback: ((profile: WriterProfile) => void) | null = null
 
-  constructor(db: IDatabase) {
+  constructor(db: IDatabase, writerId: string) {
     this.recorder = new TrajectoryRecorder(db)
+    this.writerUpdater = new WriterModelUpdater(writerId)
   }
 
   setSaveProfileCallback(cb: (profile: WriterProfile) => void): void {
     this.saveProfileCallback = cb
   }
 
-  static create(db: IDatabase): LearningEngine {
-    return new LearningEngine(db)
+  static create(db: IDatabase, writerId?: string): LearningEngine {
+    return new LearningEngine(db, writerId ?? 'unknown')
   }
 
   getRecorder(): TrajectoryRecorder {
@@ -75,19 +76,14 @@ export class LearningEngine {
     topSkills: string[]
     lastActive: string
   } {
-    // Memory optimization: previously fetched up to 10000 trajectory rows
-    // just to surface a count and a sample timestamp. Each row can carry a
-    // large `response` payload, so we now bound the page to 500 rows. For
-    // projects with extensive history, `totalInteractions` becomes a lower
-    // bound (capped at 500); `topSkills` is unaffected because it is derived
-    // from `detectPatterns` (its own aggregation query).
-    const entries = this.recorder.getProjectTrajectories(projectId, 500)
+    const totalInteractions = this.recorder.countByProject(projectId)
     const patterns = this.recorder.detectPatterns(projectId)
+    const lastActive = this.recorder.getLastActiveByProject(projectId)
 
     return {
-      totalInteractions: entries.length,
+      totalInteractions,
       topSkills: patterns.slice(0, 3).map(p => p.skillId),
-      lastActive: entries[0]?.timestamp ?? '从未使用'
+      lastActive: lastActive ?? '从未使用'
     }
   }
 

@@ -1,5 +1,6 @@
 import fs from 'fs'
 import path from 'path'
+import YAML from 'yaml'
 import type { SkillDefinition } from '../../shared/types'
 import type { ILLMProvider } from '../di/service-interfaces'
 import { logger } from '../utils/logger'
@@ -34,16 +35,18 @@ export class SkillLoader {
   /** Auto-load all SKILL.md files on first use */
   private ensureLoaded(): void {
     if (this.loaded) return
-    this.loaded = true
     // In dev:  __dirname = out/main/ → ../../skills → D:\...\AIscribe\skills
     // In prod: __dirname = app.asar/dist → ../../skills → app root skills/
     const paths = [path.join(__dirname, '../../skills'), path.join(__dirname, '../skills')]
     for (const skillsDir of paths) {
       if (fs.existsSync(skillsDir)) {
         this.loadFromDirectorySync(skillsDir)
+        this.loaded = true
         return
       }
     }
+    this.loaded = true
+    logger.error(`Failed to locate skills directory. Tried: ${paths.join(', ')}`)
   }
 
   /** Synchronous version for constructor use */
@@ -66,7 +69,7 @@ export class SkillLoader {
         const rawContent = fs.readFileSync(skillFilePath, 'utf-8')
         const skill = this.parseSkillMd(rawContent, skillDir, skillFilePath)
         if (skill) {
-          this.skills.set(skill.name, skill)
+          this.registerSkill(skill)
           loaded.push(skill)
         }
       } catch (err) {
@@ -107,7 +110,7 @@ export class SkillLoader {
         const skill = this.parseSkillMd(rawContent, skillDir, skillFilePath)
 
         if (skill) {
-          this.skills.set(skill.name, skill)
+          this.registerSkill(skill)
           loaded.push(skill)
         }
       } catch (err) {
@@ -129,7 +132,7 @@ export class SkillLoader {
     const skill = this.parseSkillMd(rawContent, skillDir, filePath)
 
     if (skill) {
-      this.skills.set(skill.name, skill)
+      this.registerSkill(skill)
     }
 
     return skill
@@ -144,24 +147,42 @@ export class SkillLoader {
       const frontmatterMatch = content.match(/^---\r?\n([\s\S]*?)\r?\n---/)
       if (!frontmatterMatch) return null
 
-      const frontmatter = frontmatterMatch[1]
-      const nameMatch = frontmatter.match(/^name:\s*(.+)$/m)
-      const descriptionMatch = frontmatter.match(/^description:\s*(.+)$/m)
+      const frontmatter = YAML.parse(frontmatterMatch[1])
+      if (!frontmatter || typeof frontmatter !== 'object' || Array.isArray(frontmatter)) {
+        logger.warn(`Invalid YAML frontmatter in ${filePath}`)
+        return null
+      }
 
-      if (!nameMatch) return null
+      const name = frontmatter.name
+      if (typeof name !== 'string' || !name.trim()) {
+        logger.warn(`Missing skill name in ${filePath}`)
+        return null
+      }
 
       return {
-        name: nameMatch[1].trim(),
-        description: descriptionMatch ? descriptionMatch[1].trim() : '',
+        name: name.trim(),
+        description: typeof frontmatter.description === 'string' ? frontmatter.description.trim() : '',
         directory,
         filePath,
         rawContent: content,
-        category: this.inferCategory(nameMatch[1].trim())
+        category: this.inferCategory(name.trim())
       }
     } catch (err) {
       logger.warn(`Failed to parse skill from ${filePath}:`, err)
       return null
     }
+  }
+
+  /**
+   * Register a skill, warning on duplicate names.
+   * The first registered skill wins to avoid silent overwrites.
+   */
+  private registerSkill(skill: SkillRecord): void {
+    if (this.skills.has(skill.name)) {
+      logger.warn(`Duplicate skill name detected: ${skill.name} (${skill.filePath}). Keeping first registered skill.`)
+      return
+    }
+    this.skills.set(skill.name, skill)
   }
 
   /**
@@ -209,7 +230,7 @@ export class SkillLoader {
    * with the skill's documentation as context.
    */
   async executeSkill(name: string, input: SkillInput): Promise<SkillResult> {
-    const skill = this.skills.get(name)
+    const skill = this.getSkill(name)
     if (!skill) {
       throw new Error(`技能不存在: ${name}`)
     }

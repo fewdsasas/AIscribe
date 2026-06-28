@@ -89,6 +89,7 @@ export interface AiscribeAPI {
   llmConfig(config: LLMConfig): Promise<boolean>
   llmIsConfigured(): Promise<boolean>
   llmConfigMeta(): Promise<LLMConfigMeta>
+  llmTestConnection(config: LLMConfig): Promise<boolean>
   startLLMStream(request: LLMRequest): Promise<boolean>
   cancelLLMStream(requestId: string): Promise<boolean>
   onLLMChunk(callback: (chunk: string) => void): void

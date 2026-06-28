@@ -2,8 +2,14 @@ import type { NextAction, TrajectoryEntry, WriterProfile } from '@shared/types'
 export type { WriterProfile, NextAction }
 
 export class WriterModelUpdater {
+  private writerId: string
+
+  constructor(writerId?: string) {
+    this.writerId = writerId ?? 'unknown'
+  }
+
   buildModel(entries: TrajectoryEntry[]): WriterProfile {
-    const writerId = entries.length > 0 ? entries[0].projectId : 'unknown'
+    const writerId = this.writerId
 
     // Count skill usage
     const skillCounts = new Map<string, { count: number; lastUsed: string }>()

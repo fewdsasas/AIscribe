@@ -89,7 +89,7 @@ function createWindow(): void {
 
   mainWindow.on('ready-to-show', () => {
     mainWindow?.show()
-    if (is.dev) {
+    if (is.dev && process.env.NODE_ENV !== 'test') {
       mainWindow?.webContents.openDevTools()
     }
   })

@@ -92,4 +92,61 @@ describe('TrajectoryRecorder', () => {
     if (!skillPattern) throw new Error('skillPattern not found')
     expect(skillPattern.count).toBe(5)
   })
+
+  it('should query trajectories by skill', async () => {
+    const entries = recorder.getSkillTrajectories('story-structure')
+    expect(entries.length).toBeGreaterThan(0)
+    expect(entries.every(e => e.skillId === 'story-structure')).toBe(true)
+  })
+
+  it('should query trajectories by session', async () => {
+    const entries = recorder.getSessionTrajectories('session-1')
+    expect(entries.length).toBe(1)
+    expect(entries[0].sessionId).toBe('session-1')
+  })
+
+  it('should search memory with query', async () => {
+    const entries = recorder.searchMemory('proj-1', '反派')
+    expect(entries.length).toBeGreaterThan(0)
+  })
+
+  it('should count trajectories by project', async () => {
+    const count = recorder.countByProject('proj-1')
+    expect(count).toBeGreaterThan(0)
+  })
+
+  it('should get last active timestamp by project', async () => {
+    const lastActive = recorder.getLastActiveByProject('proj-1')
+    expect(lastActive).toBeTruthy()
+  })
+
+  it('should compress multi-entry sessions to first and last', async () => {
+    for (let i = 0; i < 3; i++) {
+      await recorder.record({
+        projectId: 'proj-multi',
+        sessionId: 'shared-session',
+        skillId: 'revision-polish',
+        query: `query ${i}`,
+        response: `response ${i}`,
+        duration: 1000,
+        context: {}
+      })
+    }
+    const compressed = recorder.compressProject('proj-multi')
+    expect(compressed.originalCount).toBe(3)
+    expect(compressed.compressedCount).toBe(2)
+    expect(compressed.summary).toContain('shared-session'.slice(0, 8))
+  })
+
+  it('should handle closed recorder gracefully', () => {
+    const closedRecorder = new TrajectoryRecorder(db)
+    closedRecorder.close()
+    expect(closedRecorder.getProjectTrajectories('x')).toEqual([])
+    expect(closedRecorder.getSkillTrajectories('x')).toEqual([])
+    expect(closedRecorder.getSessionTrajectories('x')).toEqual([])
+    expect(closedRecorder.searchMemory('x', 'q')).toEqual([])
+    expect(closedRecorder.countByProject('x')).toBe(0)
+    expect(closedRecorder.getLastActiveByProject('x')).toBeNull()
+    expect(closedRecorder.detectPatterns('x')).toEqual([])
+  })
 })

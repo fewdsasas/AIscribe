@@ -2,6 +2,8 @@ import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vites
 import path from 'path'
 import fs from 'fs'
 
+const TEST_SESSION_ID = '12345678-1234-1234-1234-123456789abc'
+
 vi.mock('electron', () => ({
   app: {
     getPath: () => path.join(__dirname, '../../temp'),
@@ -83,7 +85,13 @@ describe('Learning IPC Handlers', () => {
       const handler = getRegisteredHandler('learning:record')
       const project = await db.createProject({ name: 'Learning Test', genre: 'fantasy', status: 'planning' })
 
-      const result = await handler(null, { projectId: project.id, query: 'test query' })
+      const result = await handler(null, {
+        projectId: project.id,
+        sessionId: TEST_SESSION_ID,
+        query: 'test query',
+        response: 'test response',
+        duration: 100
+      })
       expect(result).toBe(true)
       expect(mockRecordInteraction).toHaveBeenCalled()
     })
@@ -92,7 +100,98 @@ describe('Learning IPC Handlers', () => {
       const handler = getRegisteredHandler('learning:record')
       const project = await db.createProject({ name: 'Learning Empty', genre: 'fantasy', status: 'planning' })
 
-      await expect(handler(null, { projectId: project.id, query: '' })).rejects.toThrow('查询内容 不能为空')
+      await expect(
+        handler(null, {
+          projectId: project.id,
+          sessionId: TEST_SESSION_ID,
+          query: '',
+          response: 'test response',
+          duration: 100
+        })
+      ).rejects.toThrow('查询内容 不能为空')
+    })
+
+    it('should reject missing session ID', async () => {
+      const handler = getRegisteredHandler('learning:record')
+      const project = await db.createProject({ name: 'Learning Missing Session', genre: 'fantasy', status: 'planning' })
+
+      await expect(
+        handler(null, {
+          projectId: project.id,
+          query: 'test',
+          response: 'test response',
+          duration: 100
+        } as any)
+      ).rejects.toThrow('会话ID 不能为空')
+    })
+
+    it('should reject empty response', async () => {
+      const handler = getRegisteredHandler('learning:record')
+      const project = await db.createProject({ name: 'Learning Empty Response', genre: 'fantasy', status: 'planning' })
+
+      await expect(
+        handler(null, {
+          projectId: project.id,
+          sessionId: TEST_SESSION_ID,
+          query: 'test',
+          response: '',
+          duration: 100
+        })
+      ).rejects.toThrow('响应内容 不能为空')
+    })
+
+    it('should reject negative duration', async () => {
+      const handler = getRegisteredHandler('learning:record')
+      const project = await db.createProject({
+        name: 'Learning Negative Duration',
+        genre: 'fantasy',
+        status: 'planning'
+      })
+
+      await expect(
+        handler(null, {
+          projectId: project.id,
+          sessionId: TEST_SESSION_ID,
+          query: 'test',
+          response: 'test response',
+          duration: -1
+        })
+      ).rejects.toThrow('持续时间 不能为负数')
+    })
+
+    it('should reject non-number duration', async () => {
+      const handler = getRegisteredHandler('learning:record')
+      const project = await db.createProject({ name: 'Learning NaN Duration', genre: 'fantasy', status: 'planning' })
+
+      await expect(
+        handler(null, {
+          projectId: project.id,
+          sessionId: TEST_SESSION_ID,
+          query: 'test',
+          response: 'test response',
+          duration: 'fast'
+        } as any)
+      ).rejects.toThrow('持续时间 必须为数字')
+    })
+
+    it('should truncate oversized context', async () => {
+      const handler = getRegisteredHandler('learning:record')
+      const project = await db.createProject({ name: 'Learning Large Context', genre: 'fantasy', status: 'planning' })
+
+      const largeContext = { data: 'x'.repeat(70 * 1024) }
+      await handler(null, {
+        projectId: project.id,
+        sessionId: TEST_SESSION_ID,
+        query: 'test',
+        response: 'test response',
+        duration: 100,
+        context: largeContext
+      })
+
+      expect(mockRecordInteraction).toHaveBeenCalled()
+      const passedContext = mockRecordInteraction.mock.calls[0][0].context
+      expect(passedContext.truncated).toBe(true)
+      expect(passedContext.originalSize).toBeGreaterThan(64 * 1024)
     })
   })
 

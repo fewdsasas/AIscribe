@@ -2,7 +2,15 @@ import type { Database as SqlJsDatabase } from 'sql.js'
 import { v4 as uuid } from 'uuid'
 import type { Character } from '../../../shared/types'
 import { BaseRepository } from './base-repository'
-import { asOptionalNumber, asOptionalString, asString, buildRowMap, now, safeJsonParse } from './row-mapper'
+import {
+  asOptionalNumber,
+  asOptionalString,
+  asString,
+  buildRowMap,
+  now,
+  safeJsonParse,
+  safeJsonParseWithShape
+} from './row-mapper'
 import type { ICharacterRepository } from './repository-interfaces'
 
 export class CharacterRepository extends BaseRepository implements ICharacterRepository {
@@ -16,6 +24,7 @@ export class CharacterRepository extends BaseRepository implements ICharacterRep
   protected performSave(): void {}
 
   create(data: Partial<Omit<Character, 'id' | 'createdAt' | 'updatedAt'>> & { id?: string }): Character {
+    if (!data.novelId) throw new Error('novelId 不能为空')
     const character: Character = {
       id: data.id ?? uuid(),
       novelId: data.novelId ?? '',
@@ -34,7 +43,7 @@ export class CharacterRepository extends BaseRepository implements ICharacterRep
       createdAt: now(),
       updatedAt: now()
     }
-    this.sqlDb.run(
+    this.run(
       `INSERT INTO characters (id, novel_id, name, aliases, role, age, gender, occupation,
         personality, background, appearance, abilities, goals, fears, secrets, arc, relationships,
         dialogue_voice, notes, created_at, updated_at)
@@ -84,7 +93,7 @@ export class CharacterRepository extends BaseRepository implements ICharacterRep
       age: asOptionalNumber(map.age),
       gender: asOptionalString(map.gender),
       occupation: asOptionalString(map.occupation),
-      personality: safeJsonParse(map.personality, {
+      personality: safeJsonParseWithShape(map.personality, {
         traits: [],
         virtues: [],
         flaws: [],
@@ -97,7 +106,13 @@ export class CharacterRepository extends BaseRepository implements ICharacterRep
       goals: safeJsonParse<string[]>(map.goals, []),
       fears: safeJsonParse<string[]>(map.fears, []),
       secrets: safeJsonParse<string[]>(map.secrets, []),
-      arc: safeJsonParse(map.arc, { type: 'static', startingState: '', endingState: '', catalyst: '', keyMoments: [] }),
+      arc: safeJsonParseWithShape<Character['arc']>(map.arc, {
+        type: 'static',
+        startingState: '',
+        endingState: '',
+        catalyst: '',
+        keyMoments: []
+      }),
       relationships: safeJsonParse(map.relationships, []),
       dialogueVoice: asOptionalString(map.dialogue_voice),
       notes: asOptionalString(map.notes),

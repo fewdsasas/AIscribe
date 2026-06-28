@@ -8,7 +8,10 @@ import { CharacterMentionExtension } from './extensions/CharacterMention'
 import { countChineseChars, formatProgress, WritingGoalPlugin } from './extensions/WritingGoal'
 import { Toolbar } from './menus/Toolbar'
 import { BubbleMenu } from './menus/BubbleMenu'
+import { logger } from '../../utils/logger'
 import './styles/editor.css'
+
+const MAX_CHAPTER_CHARS = 500_000
 
 export interface NovelEditorHandle {
   insertContent: (text: string) => void
@@ -21,6 +24,7 @@ export interface NovelEditorProps {
   dailyGoal?: number
   onContentChange?: (json: Record<string, unknown>, text: string, charCount: number) => void
   onSave?: () => void
+  onContentLimitReached?: () => void
   readOnly?: boolean
   placeholder?: string
 }
@@ -33,6 +37,7 @@ export const NovelEditor = forwardRef<NovelEditorHandle, NovelEditorProps>(
       dailyGoal: propDailyGoal,
       onContentChange,
       onSave,
+      onContentLimitReached,
       readOnly = false,
       placeholder = '开始写作...'
     },
@@ -42,6 +47,7 @@ export const NovelEditor = forwardRef<NovelEditorHandle, NovelEditorProps>(
     const [writingSpeed, setWritingSpeed] = useState(0)
     const [goalProgress, setGoalProgress] = useState(0)
     const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+    const enforcingLimitRef = useRef(false)
 
     // Memoize localStorage reads to avoid repeated access
     const { autoSaveInterval, effectiveDailyGoal } = useMemo(() => {
@@ -64,9 +70,11 @@ export const NovelEditor = forwardRef<NovelEditorHandle, NovelEditorProps>(
       return { autoSaveInterval: interval, effectiveDailyGoal: propDailyGoal ?? goal }
     }, [propDailyGoal])
 
-    // Use a ref for onSave to avoid stale closure in cleanup
+    // Use refs to avoid stale closures in callbacks with infrequent re-creation
     const onSaveRef = useRef(onSave)
     onSaveRef.current = onSave
+    const onContentLimitReachedRef = useRef(onContentLimitReached)
+    onContentLimitReachedRef.current = onContentLimitReached
 
     // Debounced auto-save: saves after the user stops typing
     const triggerAutoSave = useCallback(() => {
@@ -113,6 +121,16 @@ export const NovelEditor = forwardRef<NovelEditorHandle, NovelEditorProps>(
         const json = ed.getJSON()
         const text = ed.state.doc.textContent
         const chars = countChineseChars(text)
+
+        if (chars > MAX_CHAPTER_CHARS && !enforcingLimitRef.current) {
+          enforcingLimitRef.current = true
+          ed.commands.undo()
+          logger.warn(`章节内容超过 ${MAX_CHAPTER_CHARS} 字上限，已回退最后一次输入`)
+          onContentLimitReached?.()
+          enforcingLimitRef.current = false
+          return
+        }
+
         if (onContentChange) {
           onContentChange(json, text, chars)
         }
@@ -125,9 +143,15 @@ export const NovelEditor = forwardRef<NovelEditorHandle, NovelEditorProps>(
       ref,
       () => ({
         insertContent: (text: string) => {
-          if (editor) {
-            editor.chain().focus().insertContent(text).run()
+          if (!editor) return
+          const currentChars = countChineseChars(editor.state.doc.textContent)
+          const insertChars = countChineseChars(text)
+          if (currentChars + insertChars > MAX_CHAPTER_CHARS) {
+            logger.warn(`插入内容将超出 ${MAX_CHAPTER_CHARS} 字上限，已阻止`)
+            onContentLimitReachedRef.current?.()
+            return
           }
+          editor.chain().focus().insertContent(text).run()
         }
       }),
       [editor]
@@ -149,6 +173,25 @@ export const NovelEditor = forwardRef<NovelEditorHandle, NovelEditorProps>(
       document.addEventListener('keydown', handleKeyDown)
       return () => document.removeEventListener('keydown', handleKeyDown)
     }, [])
+
+    // Block paste that would exceed the chapter character limit
+    useEffect(() => {
+      if (!editor || readOnly) return
+      const dom = editor.view.dom as HTMLElement
+      const handlePaste = (e: ClipboardEvent) => {
+        const pasteText = e.clipboardData?.getData('text/plain') ?? ''
+        const currentText = editor.state.doc.textContent
+        const currentChars = countChineseChars(currentText)
+        const pasteChars = countChineseChars(pasteText)
+        if (currentChars + pasteChars > MAX_CHAPTER_CHARS) {
+          e.preventDefault()
+          logger.warn(`粘贴内容将超出 ${MAX_CHAPTER_CHARS} 字上限，已阻止`)
+          onContentLimitReached?.()
+        }
+      }
+      dom.addEventListener('paste', handlePaste)
+      return () => dom.removeEventListener('paste', handlePaste)
+    }, [editor, readOnly, onContentLimitReached])
 
     // Update content when initialContent changes
     useEffect(() => {

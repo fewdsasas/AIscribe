@@ -14,6 +14,7 @@ export interface ILLMService {
   chat(request: LLMRequest): Promise<LLMResponse>
   config(config: LLMConfig): Promise<boolean>
   configMeta(): Promise<LLMConfigMeta>
+  testConnection(config: LLMConfig): Promise<boolean>
   startStream(request: LLMRequest): Promise<boolean>
   cancelStream(requestId: string): Promise<boolean>
   onChunk(callback: (chunk: string) => void): void
@@ -28,6 +29,7 @@ export function createLLMService(api: AiscribeAPI): ILLMService {
     chat: request => api.llmChat(request),
     config: config => api.llmConfig(config),
     configMeta: () => api.llmConfigMeta(),
+    testConnection: config => api.llmTestConnection(config),
     startStream: request => api.startLLMStream(request),
     cancelStream: requestId => api.cancelLLMStream(requestId),
     onChunk: callback => api.onLLMChunk(callback),

@@ -47,6 +47,16 @@ export function safeJsonParse<T>(value: unknown, fallback: T): T {
   }
 }
 
+/**
+ * Safe JSON.parse that merges the parsed object with a shape fallback.
+ * Ensures deserialized objects always contain the required fields defined by shape.
+ */
+export function safeJsonParseWithShape<T extends object>(value: unknown, shape: T): T {
+  const parsed = safeJsonParse(value, shape)
+  if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return shape
+  return { ...shape, ...parsed } as T
+}
+
 /** Generate ISO timestamp */
 export function now(): string {
   return new Date().toISOString()

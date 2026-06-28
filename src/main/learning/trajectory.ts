@@ -75,6 +75,16 @@ export class TrajectoryRecorder {
     }
   }
 
+  countByProject(projectId: string): number {
+    if (!this.db) return 0
+    return this.db.trajectories.countByProject(projectId)
+  }
+
+  getLastActiveByProject(projectId: string): string | null {
+    if (!this.db) return null
+    return this.db.trajectories.getLastActiveByProject(projectId)
+  }
+
   detectPatterns(projectId: string): { skillId: string; count: number; ratio: number }[] {
     if (!this.db) return []
     return this.db.trajectories.detectPatterns(projectId)

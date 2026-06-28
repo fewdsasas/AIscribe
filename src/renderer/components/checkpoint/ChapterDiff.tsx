@@ -68,10 +68,7 @@ export const ChapterDiff: React.FC<ChapterDiffProps> = ({ projectId }) => {
   const handleCompare = async () => {
     if (!leftId || !rightId) return
     try {
-      const snaps = await Promise.all([
-        checkpointService.restore(leftId),
-        checkpointService.restore(rightId)
-      ])
+      const snaps = await Promise.all([checkpointService.restore(leftId), checkpointService.restore(rightId)])
       const leftSnap = snaps[0] as unknown as { novel: string } | null
       const rightSnap = snaps[1] as unknown as { novel: string } | null
       const left = typeof leftSnap?.novel === 'string' ? leftSnap.novel : JSON.stringify(leftSnap?.novel ?? '')

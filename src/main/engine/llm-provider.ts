@@ -4,6 +4,7 @@ import { DEFAULT_ENDPOINTS, LLM_STREAM_TIMEOUT_MS } from '../../shared/constants
 import { validateEndpoint } from './url-validator'
 
 const MAX_STREAM_BUFFER_SIZE = 1024 * 1024
+const TEST_CONNECTION_TIMEOUT_MS = 15_000
 
 // ===== Type Guards =====
 
@@ -47,6 +48,7 @@ interface ProviderConfig {
   baseUrl?: string
   temperature: number
   maxTokens: number
+  customProtocol?: 'openai' | 'anthropic'
 }
 
 // ===== Provider Strategy Interface =====
@@ -169,7 +171,7 @@ const claudeStrategy: ProviderStrategy = {
     const outputTokens = safeGetNumber(usage, 'output_tokens') ?? 0
     return { promptTokens: inputTokens, completionTokens: outputTokens, totalTokens: inputTokens + outputTokens }
   },
-  buildAuthHeader: config => ({ Authorization: `Bearer ${config.apiKey}` }),
+  buildAuthHeader: config => ({ 'x-api-key': config.apiKey }),
   shouldSendStreamFlag: () => false
 }
 
@@ -212,7 +214,10 @@ const strategies: Record<string, ProviderStrategy> = {
   claude: claudeStrategy,
   mimo: mimoStrategy,
   wenxin: wenxinStrategy,
-  tongyi: tongyiStrategy
+  tongyi: tongyiStrategy,
+  custom: openaiStrategy,
+  'custom-anthropic': claudeStrategy,
+  'custom-openai': openaiStrategy
 }
 
 export class LLMProvider {
@@ -234,7 +239,11 @@ export class LLMProvider {
         model: isString(data.model) ? data.model : undefined,
         baseUrl: isString(data.baseUrl) ? data.baseUrl : undefined,
         temperature: isNumber(data.temperature) ? data.temperature : undefined,
-        maxTokens: isNumber(data.maxTokens) ? data.maxTokens : undefined
+        maxTokens: isNumber(data.maxTokens) ? data.maxTokens : undefined,
+        customProtocol:
+          data.customProtocol === 'anthropic' || data.customProtocol === 'openai'
+            ? (data.customProtocol as 'openai' | 'anthropic')
+            : undefined
       } as LLMConfig)
     }
   }
@@ -245,7 +254,11 @@ export class LLMProvider {
       model: config.model,
       baseUrl: config.baseUrl,
       temperature: config.temperature ?? 0.7,
-      maxTokens: config.maxTokens ?? 4096
+      maxTokens: config.maxTokens ?? 4096,
+      customProtocol:
+        config.provider === 'custom' && (config.customProtocol === 'anthropic' || config.customProtocol === 'openai')
+          ? config.customProtocol
+          : undefined
     }
     this.defaultProvider = config.provider
   }
@@ -264,7 +277,11 @@ export class LLMProvider {
     return this.defaultProvider
   }
 
-  private getStrategy(provider: LLMProviderType): ProviderStrategy {
+  private getStrategy(provider: LLMProviderType, config?: ProviderConfig): ProviderStrategy {
+    if (provider === 'custom' && config?.customProtocol) {
+      const strategy = strategies[`custom-${config.customProtocol}`]
+      if (strategy) return strategy
+    }
     const strategy = strategies[provider]
     if (!strategy) throw new Error(`未知的提供商策略: ${provider}`)
     return strategy
@@ -280,21 +297,18 @@ export class LLMProvider {
     return false
   }
 
-  async chat(request: LLMRequest, provider?: LLMProviderType): Promise<LLMResponse> {
-    const targetProvider = provider ?? this.defaultProvider
-    const config = this.configs[targetProvider]
-    if (!config) throw new Error('未配置 LLM 提供商')
-
-    const strategy = this.getStrategy(targetProvider)
+  private async executeChatRequest(
+    provider: LLMProviderType,
+    config: ProviderConfig,
+    messages: { role: string; content: string }[],
+    timeoutMs: number = LLM_STREAM_TIMEOUT_MS
+  ): Promise<LLMResponse> {
+    const strategy = this.getStrategy(provider, config)
     const endpoint = strategy.getEndpoint(config)
-    if (!endpoint) throw new Error(`未知的提供商: ${targetProvider}`)
-
-    const messages = request.system
-      ? [{ role: 'system' as const, content: request.system }, ...request.messages]
-      : request.messages
+    if (!endpoint) throw new Error(`未知的提供商: ${provider}`)
 
     const controller = new AbortController()
-    const timeoutId = setTimeout(() => controller.abort(), LLM_STREAM_TIMEOUT_MS)
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
 
     try {
       const body = strategy.buildRequestBody(config, messages, false)
@@ -320,7 +334,7 @@ export class LLMProvider {
         } catch {
           /* non-JSON error body */
         }
-        throw new Error(`API 错误 (${response.status}): ${errorMsg}`)
+        throw new Error(`API Error (${response.status}): ${errorMsg}`)
       }
 
       const data: Record<string, unknown> = await response.json()
@@ -331,6 +345,35 @@ export class LLMProvider {
       if (this.isAbortError(error)) throw new Error('LLM 请求超时')
       throw new Error(`LLM 请求失败: ${error instanceof Error ? error.message : String(error)}`)
     }
+  }
+
+  async chat(request: LLMRequest, provider?: LLMProviderType): Promise<LLMResponse> {
+    const targetProvider = provider ?? this.defaultProvider
+    const config = this.configs[targetProvider]
+    if (!config) throw new Error('未配置 LLM 提供商')
+
+    const messages = request.system
+      ? [{ role: 'system' as const, content: request.system }, ...request.messages]
+      : request.messages
+
+    return this.executeChatRequest(targetProvider, config, messages)
+  }
+
+  async testConnection(config: LLMConfig): Promise<boolean> {
+    const providerConfig: ProviderConfig = {
+      apiKey: config.apiKey,
+      model: config.model,
+      baseUrl: config.baseUrl,
+      temperature: config.temperature ?? 0.7,
+      maxTokens: config.maxTokens ?? 4096,
+      customProtocol:
+        config.provider === 'custom' && (config.customProtocol === 'anthropic' || config.customProtocol === 'openai')
+          ? config.customProtocol
+          : undefined
+    }
+    const messages = [{ role: 'user' as const, content: 'Hello' }]
+    await this.executeChatRequest(config.provider, providerConfig, messages, TEST_CONNECTION_TIMEOUT_MS)
+    return true
   }
 
   async chatStream(
@@ -350,7 +393,7 @@ export class LLMProvider {
       return
     }
 
-    const strategy = this.getStrategy(targetProvider)
+    const strategy = this.getStrategy(targetProvider, config)
     const endpoint = strategy.getEndpoint(config)
     if (!endpoint) {
       callbacks.onError(`Unknown provider: ${targetProvider}`)
@@ -368,23 +411,35 @@ export class LLMProvider {
       this.activeControllers.set(requestId, controller)
     }
 
-    const timeoutId = setTimeout(() => {
-      if (!streamFinished) {
-        streamFinished = true
-        controller.abort()
-        callbacks.onError('LLM stream timed out')
-      }
-    }, LLM_STREAM_TIMEOUT_MS)
+    let reader: ReadableStreamDefaultReader<Uint8Array> | null = null
 
-    const cleanup = () => {
+    const releaseReader = (cancel?: boolean) => {
+      if (!reader) return
+      try {
+        if (cancel) reader.cancel()
+        reader.releaseLock()
+      } catch {
+        /* reader already released or cancelled */
+      }
+      reader = null
+    }
+
+    const cleanup = (cancel = false) => {
       if (!streamFinished) {
         streamFinished = true
         clearTimeout(timeoutId)
       }
       if (requestId) this.activeControllers.delete(requestId)
+      releaseReader(cancel)
     }
 
-    let reader: ReadableStreamDefaultReader<Uint8Array> | null = null
+    const timeoutId = setTimeout(() => {
+      if (!streamFinished) {
+        controller.abort()
+        cleanup(true)
+        callbacks.onError('LLM stream timed out')
+      }
+    }, LLM_STREAM_TIMEOUT_MS)
 
     try {
       const body = strategy.buildRequestBody(config, messages, true)
@@ -401,8 +456,8 @@ export class LLMProvider {
       })
 
       if (!response.ok) {
-        cleanup()
         response.body?.cancel()
+        cleanup()
         let errorMsg = response.statusText
         try {
           const error = await response.json()
@@ -428,23 +483,13 @@ export class LLMProvider {
       while (true) {
         const { done, value } = await reader.read()
         if (done) {
-          try {
-            reader.releaseLock()
-          } catch {
-            /* already released */
-          }
+          cleanup()
           break
         }
 
         buffer += decoder.decode(value, { stream: true })
         if (buffer.length > MAX_STREAM_BUFFER_SIZE) {
-          cleanup()
-          try {
-            reader.cancel()
-            reader.releaseLock()
-          } catch {
-            /* ignore */
-          }
+          cleanup(true)
           callbacks.onError('Stream buffer overflow')
           return
         }
@@ -496,15 +541,7 @@ export class LLMProvider {
       cleanup()
       callbacks.onDone(usage)
     } catch (error) {
-      cleanup()
-      if (reader) {
-        try {
-          reader.cancel()
-          reader.releaseLock()
-        } catch {
-          /* reader already released */
-        }
-      }
+      cleanup(true)
       if (this.isAbortError(error)) return
 
       callbacks.onError(`LLM stream failed: ${error instanceof Error ? error.message : String(error)}`)

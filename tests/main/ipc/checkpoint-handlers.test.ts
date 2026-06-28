@@ -74,6 +74,11 @@ describe('Checkpoint IPC Handlers', () => {
       const handler = getRegisteredHandler('checkpoint:create')
       await expect(handler(null, { projectId: testId(), label: '' })).rejects.toThrow('检查点标签 不能为空')
     })
+
+    it('should reject missing project ID', async () => {
+      const handler = getRegisteredHandler('checkpoint:create')
+      await expect(handler(null, { label: 'v1' })).rejects.toThrow('项目ID 不能为空')
+    })
   })
 
   describe('checkpoint:list', () => {
@@ -117,6 +122,11 @@ describe('Checkpoint IPC Handlers', () => {
 
       const result = await handler(null, { projectId: project.id, context: 'Test context' })
       expect(result).toBeDefined()
+    })
+
+    it('should reject missing project ID', async () => {
+      const handler = getRegisteredHandler('session:create')
+      await expect(handler(null, { context: 'No project' })).rejects.toThrow('项目ID 不能为空')
     })
   })
 

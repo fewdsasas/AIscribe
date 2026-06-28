@@ -60,4 +60,50 @@ describe('Sidebar', () => {
     fireEvent.click(screen.getByLabelText('写作'))
     expect(onNavigate).toHaveBeenCalledWith('editor')
   })
+
+  it('should toggle mobile sidebar via hamburger', () => {
+    mockUseResponsive.mockReturnValue({ isMobile: true })
+    render(<Sidebar currentView="dashboard" onNavigate={vi.fn()} />)
+
+    const hamburger = screen.getByLabelText('打开导航菜单')
+    expect(hamburger.getAttribute('aria-expanded')).toBe('false')
+
+    fireEvent.click(hamburger)
+    expect(hamburger.getAttribute('aria-expanded')).toBe('true')
+
+    fireEvent.click(hamburger)
+    expect(hamburger.getAttribute('aria-expanded')).toBe('false')
+  })
+
+  it('should close mobile sidebar when overlay clicked', () => {
+    mockUseResponsive.mockReturnValue({ isMobile: true })
+    render(<Sidebar currentView="dashboard" onNavigate={vi.fn()} />)
+
+    const hamburger = screen.getByLabelText('打开导航菜单')
+    fireEvent.click(hamburger)
+    expect(hamburger.getAttribute('aria-expanded')).toBe('true')
+
+    const overlay = document.querySelector('.fixed.inset-0.bg-black\\/30')
+    expect(overlay).not.toBeNull()
+    fireEvent.click(overlay as Element)
+
+    expect(hamburger.getAttribute('aria-expanded')).toBe('false')
+  })
+
+  it('should close mobile sidebar when clicking outside', () => {
+    mockUseResponsive.mockReturnValue({ isMobile: true })
+    render(
+      <div>
+        <div data-testid="outside">outside</div>
+        <Sidebar currentView="dashboard" onNavigate={vi.fn()} />
+      </div>
+    )
+
+    const hamburger = screen.getByLabelText('打开导航菜单')
+    fireEvent.click(hamburger)
+    expect(hamburger.getAttribute('aria-expanded')).toBe('true')
+
+    fireEvent.mouseDown(screen.getByTestId('outside'))
+    expect(hamburger.getAttribute('aria-expanded')).toBe('false')
+  })
 })
