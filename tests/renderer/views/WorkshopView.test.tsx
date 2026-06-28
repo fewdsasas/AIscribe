@@ -69,7 +69,7 @@ describe('WorkshopView', () => {
     fireEvent.change(input, { target: { value: 'Test' } })
     fireEvent.click(screen.getByText('发送'))
     await waitFor(() => {
-      expect(screen.getByText(/错误/)).toBeInTheDocument()
+      expect(screen.getByText('技能执行失败')).toBeInTheDocument()
     })
   })
 

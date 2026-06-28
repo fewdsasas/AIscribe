@@ -26,4 +26,4 @@ coverage-text.txt
 playwright-report/
 test-results/
 .trae/
-docs/design-preview.html
+docs/

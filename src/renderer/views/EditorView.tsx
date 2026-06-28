@@ -3,6 +3,7 @@ import { NovelEditor, type NovelEditorHandle } from '../components/editor/NovelE
 import { logger } from '../utils/logger'
 import { useToast } from '../components/shared/Toast'
 import { ConfirmDialog } from '../components/shared/ConfirmDialog'
+import { ErrorRetry } from '../components/shared/ErrorRetry'
 import { useMemoryMonitor } from '../hooks/useMemoryMonitor'
 import { chapterService, llmService, novelService, projectService } from '../services'
 import type { ILLMService } from '../services'
@@ -60,6 +61,8 @@ export const EditorView: React.FC<EditorViewProps> = ({ projectId, onSwitchProje
   const [projects, setProjects] = useState<{ id: string; name: string }[]>([])
   const [initialContent, setInitialContent] = useState<Record<string, unknown> | undefined>(undefined)
   const [chapterLoading, setChapterLoading] = useState(false)
+  const [chapterError, setChapterError] = useState<string | null>(null)
+  const [chapterRetryTrigger, setChapterRetryTrigger] = useState(0)
   const [showAIConfirm, setShowAIConfirm] = useState(false)
   const editorContentRef = useRef<{ json: Record<string, unknown>; text: string; chars: number } | null>(null)
   const editorRef = useRef<NovelEditorHandle>(null)
@@ -132,8 +135,9 @@ export const EditorView: React.FC<EditorViewProps> = ({ projectId, onSwitchProje
         } else {
           setInitialContent(undefined)
         }
+        setChapterError(null)
       } catch {
-        if (!cancelled && isMountedRef.current) logger.warn('EditorView operation failed')
+        if (!cancelled && isMountedRef.current) setChapterError('章节加载失败')
       }
       if (!cancelled && isMountedRef.current) setChapterLoading(false)
     }
@@ -141,7 +145,7 @@ export const EditorView: React.FC<EditorViewProps> = ({ projectId, onSwitchProje
     return () => {
       cancelled = true
     }
-  }, [selectedChapterId])
+  }, [selectedChapterId, chapterRetryTrigger])
 
   useEffect(() => {
     let cancelled = false
@@ -181,9 +185,12 @@ export const EditorView: React.FC<EditorViewProps> = ({ projectId, onSwitchProje
       if (isMountedRef.current) setSaveStatus('saved')
     } catch (err) {
       logger.error('EditorView: 保存章节失败', err)
-      if (isMountedRef.current) setSaveStatus('unsaved')
+      if (isMountedRef.current) {
+        setSaveStatus('unsaved')
+        showToast('保存失败', 'error')
+      }
     }
-  }, [selectedChapterId])
+  }, [selectedChapterId, showToast])
 
   // Fix 1: AI continuation now inserts into TipTap via ref
   const handleAIContinue = useCallback(async () => {
@@ -222,6 +229,10 @@ export const EditorView: React.FC<EditorViewProps> = ({ projectId, onSwitchProje
     [onSwitchProject]
   )
 
+  const handleRetryChapter = useCallback(() => {
+    setChapterRetryTrigger(prev => prev + 1)
+  }, [])
+
   if (!projectId) {
     return (
       <div className="h-full flex items-center justify-center" style={{ color: 'var(--color-text-secondary)' }}>
@@ -245,9 +256,8 @@ export const EditorView: React.FC<EditorViewProps> = ({ projectId, onSwitchProje
           >
             📁 切换项目
           </button>
-          {showProjectNav && (
             <div
-              className="absolute top-full left-0 mt-1 w-48 bg-surface rounded-xl border shadow-lg z-10 py-1"
+              className={`absolute top-full left-0 mt-1 w-48 bg-surface rounded-xl border shadow-lg z-10 py-1 transition-all duration-200 ease-out ${showProjectNav ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
               style={{ borderColor: 'var(--color-border)' }}
             >
               {projects.length === 0 ? (
@@ -266,7 +276,6 @@ export const EditorView: React.FC<EditorViewProps> = ({ projectId, onSwitchProje
                 ))
               )}
             </div>
-          )}
         </div>
 
         <select
@@ -303,35 +312,44 @@ export const EditorView: React.FC<EditorViewProps> = ({ projectId, onSwitchProje
           {saveStatus === 'saved' ? '✓ 已保存' : saveStatus === 'saving' ? '⏳ 保存中...' : '○ 未保存'}
         </span>
 
-        <div className="ml-auto flex gap-2">
-          <button
-            onClick={handleAIContinue}
-            disabled={aiContinuing}
-            className="px-3 py-1.5 text-xs rounded-lg font-medium transition-colors disabled:opacity-50"
-            style={{ background: 'var(--accent-bg)', color: 'var(--accent)' }}
-          >
-            {aiContinuing ? '⏳ AI 写作中...' : '🤖 AI 续写'}
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={saveStatus === 'saved'}
-            className="px-3 py-1.5 text-xs bg-[--color-primary] text-white rounded-lg font-medium disabled:opacity-50"
-          >
-            保存 (Ctrl+S)
-          </button>
+        <div className="ml-auto flex flex-col items-end gap-1">
+          <div className="flex gap-2">
+            <button
+              onClick={handleAIContinue}
+              disabled={aiContinuing}
+              className="px-3 py-1.5 text-xs rounded-lg font-medium transition-colors disabled:opacity-50"
+              style={{ background: 'var(--accent-bg)', color: 'var(--accent)' }}
+            >
+              {aiContinuing ? '⏳ AI 写作中...' : '🤖 AI 续写'}
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={saveStatus === 'saved'}
+              className="px-3 py-1.5 text-xs bg-[--color-primary] text-white rounded-lg font-medium disabled:opacity-50"
+            >
+              保存 (Ctrl+S)
+            </button>
+          </div>
+          {aiContinuing && (
+            <div className="h-1 bg-[--accent] rounded animate-pulse w-full mt-1" />
+          )}
         </div>
       </div>
 
       <div className="flex-1 min-h-0">
-        <NovelEditor
-          ref={editorRef}
-          chapterId={selectedChapterId ?? undefined}
-          chapterTitle={chapters.find(c => c.id === selectedChapterId)?.title ?? '第一章'}
-          initialContent={initialContent}
-          onContentChange={handleContentChange}
-          onSave={handleSave}
-          placeholder="开始写作..."
-        />
+        {chapterError ? (
+          <ErrorRetry message={chapterError} onRetry={handleRetryChapter} className="h-full" />
+        ) : (
+          <NovelEditor
+            ref={editorRef}
+            chapterId={selectedChapterId ?? undefined}
+            chapterTitle={chapters.find(c => c.id === selectedChapterId)?.title ?? '第一章'}
+            initialContent={initialContent}
+            onContentChange={handleContentChange}
+            onSave={handleSave}
+            placeholder="开始写作..."
+          />
+        )}
       </div>
 
       {/* AI Continue confirmation dialog */}

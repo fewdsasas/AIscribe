@@ -102,6 +102,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onSelectProject })
     if (!deleteConfirmId) return
     try {
       await projectService.delete(deleteConfirmId)
+      showToast('项目已删除', 'success')
       loadProjects()
     } catch (err) {
       logger.error('删除项目失败:', err)

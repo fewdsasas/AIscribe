@@ -1,5 +1,6 @@
 import React, { useState } from 'react'
 import { exportService } from '../../services'
+import Skeleton from '../shared/Skeleton'
 
 interface ExportDialogProps {
   projectId: string
@@ -100,6 +101,14 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({ projectId, projectNa
             />
             <span style={{ color: 'var(--color-text)' }}>包含简介</span>
           </label>
+
+          {/* Exporting progress */}
+          {exporting && (
+            <div className="space-y-2">
+              <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>正在导出...</p>
+              <Skeleton count={1} height="8px" rounded="rounded-full" />
+            </div>
+          )}
 
           {/* Result */}
           {result && (

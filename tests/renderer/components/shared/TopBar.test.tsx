@@ -38,7 +38,7 @@ describe('TopBar', () => {
   it('should call onToggleTheme when theme button clicked', () => {
     const onToggleTheme = vi.fn()
     render(<TopBar currentView="editor" onToggleTheme={onToggleTheme} />)
-    fireEvent.click(screen.getByTitle('切换主题'))
+    fireEvent.click(screen.getByTitle('切换到暗色模式'))
     expect(onToggleTheme).toHaveBeenCalled()
   })
 

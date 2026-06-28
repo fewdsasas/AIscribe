@@ -10,6 +10,8 @@ interface ChatInputProps {
   disabled?: boolean
   placeholder?: string
   skills?: SkillOption[]
+  isStreaming?: boolean
+  onStop?: () => void
 }
 
 export interface ChatInputHandle {
@@ -18,7 +20,7 @@ export interface ChatInputHandle {
 }
 
 export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
-  ({ onSend, disabled = false, placeholder = '输入你的创作需求...', skills: _skills = [] }, ref) => {
+  ({ onSend, disabled = false, placeholder = '输入你的创作需求...', skills: _skills = [], isStreaming = false, onStop }, ref) => {
     const [text, setText] = useState('')
     const [selectedSkill, setSelectedSkill] = useState<string | null>(null)
     const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -48,6 +50,9 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
       if (!trimmed || disabled) return
       onSend(trimmed, selectedSkill ?? undefined)
       setText('')
+      if (textareaRef.current) {
+        textareaRef.current.style.height = 'auto'
+      }
       setSelectedSkill(null)
     }
 
@@ -123,16 +128,30 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
                 </span>
               </div>
             )}
+            {text.length > 0 && (
+              <div className="text-[10px] text-right text-[--color-text-secondary] mt-1">
+                Shift+Enter 换行
+              </div>
+            )}
           </div>
 
-          {/* Send button */}
-          <button
-            onClick={handleSend}
-            disabled={disabled || !text.trim()}
-            className="px-4 py-2.5 bg-[--color-primary] text-white rounded-xl text-sm font-medium hover:bg-[--color-primary-hover] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            {disabled ? '⏳' : '发送'}
-          </button>
+          {/* Send / Stop button */}
+          {isStreaming && onStop ? (
+            <button
+              onClick={onStop}
+              className="px-4 py-2.5 border border-red-300 text-red-500 rounded-xl text-sm font-medium hover:bg-red-50 transition-colors"
+            >
+              停止
+            </button>
+          ) : (
+            <button
+              onClick={handleSend}
+              disabled={disabled || !text.trim()}
+              className="px-4 py-2.5 bg-[--color-primary] text-white rounded-xl text-sm font-medium hover:bg-[--color-primary-hover] disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {disabled ? '⏳' : '发送'}
+            </button>
+          )}
         </div>
       </div>
     )

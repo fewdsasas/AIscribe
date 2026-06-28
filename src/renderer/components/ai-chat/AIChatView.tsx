@@ -4,8 +4,10 @@ import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { useAppStore } from '../../store'
 import { ChatMessage } from './ChatMessage'
 import { ChatInput, type ChatInputHandle } from './ChatInput'
+import { ConfirmDialog } from '../shared/ConfirmDialog'
 import { DEFAULT_RESPONSE, NO_SKILL_RESPONSE, SIMULATED_RESPONSES } from './simulated-responses'
 import { logger } from '../../utils/logger'
+import { useToast } from '../../components/shared/Toast'
 import { learningService, llmService } from '../../services'
 import type { LLMMessage } from '../../../shared/types'
 
@@ -70,14 +72,27 @@ async function simulateStreamingResponse(
   return accumulated
 }
 
+function getDateLabel(dateStr: string): string {
+  const date = new Date(dateStr)
+  const today = new Date()
+  const yesterday = new Date(today)
+  yesterday.setDate(yesterday.getDate() - 1)
+
+  if (date.toDateString() === today.toDateString()) return '今天'
+  if (date.toDateString() === yesterday.toDateString()) return '昨天'
+  return `${date.getFullYear()}年${date.getMonth() + 1}月${date.getDate()}日`
+}
+
 const STREAM_TIMEOUT_MS = 5 * 60 * 1000
 
 const MAX_VISIBLE_MESSAGES = 100 // 最大可见消息数
 
 export const AIChatView: React.FC<AIChatViewProps> = ({ projectId }) => {
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const messagesContainerRef = useRef<HTMLDivElement>(null)
   const streamStartRef = useRef(0)
   const chatInputRef = useRef<ChatInputHandle>(null)
+  const userScrolledUpRef = useRef(false)
   const streamTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const abortRef = useRef<string | null>(null)
   // AbortController for the simulated streaming fallback (cancelled on unmount)
@@ -93,6 +108,9 @@ export const AIChatView: React.FC<AIChatViewProps> = ({ projectId }) => {
   const onErrorRef = useRef<(err: string) => void>(() => {})
   const [isConfigured, setIsConfigured] = useState(false)
   const [visibleMessageCount, setVisibleMessageCount] = useState(MAX_VISIBLE_MESSAGES)
+  const [showClearConfirm, setShowClearConfirm] = useState(false)
+  const [userScrolledUp, setUserScrolledUp] = useState(false)
+  const { showToast } = useToast()
 
   const messages = useAppStore((s: AppStore) => s.messages)
 
@@ -178,6 +196,11 @@ export const AIChatView: React.FC<AIChatViewProps> = ({ projectId }) => {
 
   const handleSend = async (text: string, skillName?: string) => {
     if (!projectId) return
+
+    // Force scroll to bottom when user sends a new message
+    userScrolledUpRef.current = false
+    setUserScrolledUp(false)
+    messagesEndRef.current?.scrollIntoView?.({ behavior: 'smooth' })
 
     addMessage({ role: 'user', content: text })
     const sessionId = `session-${Date.now()}`
@@ -337,7 +360,7 @@ export const AIChatView: React.FC<AIChatViewProps> = ({ projectId }) => {
   }, [projectId, runLearningAnalysis])
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="flex-1 flex flex-col min-h-0">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div>
@@ -349,13 +372,22 @@ export const AIChatView: React.FC<AIChatViewProps> = ({ projectId }) => {
         </div>
         {messages.length > 0 && (
           <button
-            onClick={clearMessages}
+            onClick={() => setShowClearConfirm(true)}
             className="text-xs px-3 py-1.5 rounded-lg text-[--color-text-secondary] hover:bg-[--color-bg] transition-colors"
           >
             🗑️ 清空对话
           </button>
         )}
       </div>
+
+      <ConfirmDialog
+        open={showClearConfirm}
+        title="清空对话"
+        message="确定要清空所有对话记录吗？此操作不可恢复。"
+        confirmLabel="清空"
+        onConfirm={() => { clearMessages(); showToast('对话已清空', 'success'); setShowClearConfirm(false) }}
+        onCancel={() => setShowClearConfirm(false)}
+      />
 
       {/* Learning insights panel */}
       {(suggestions.length > 0 || nextActions.length > 0 || evolvedShortcuts.length > 0) && (
@@ -410,7 +442,7 @@ export const AIChatView: React.FC<AIChatViewProps> = ({ projectId }) => {
       )}
 
       {/* Messages area */}
-      <div className="flex-1 overflow-y-auto px-2 min-h-0">
+      <div ref={messagesContainerRef} className="flex-1 overflow-y-auto px-2 min-h-0 pb-4">
         {messages.length === 0 ? (
           <div className="h-full flex items-center justify-center text-[--color-text-secondary]">
             <div className="text-center max-w-md">
@@ -441,7 +473,7 @@ export const AIChatView: React.FC<AIChatViewProps> = ({ projectId }) => {
             </div>
           </div>
         ) : (
-          <div className="max-w-3xl mx-auto">
+          <div>
             {/* Load more button */}
             {messages.length > visibleMessageCount && (
               <button
@@ -452,37 +484,71 @@ export const AIChatView: React.FC<AIChatViewProps> = ({ projectId }) => {
               </button>
             )}
             {/* Render only visible messages */}
-            {messages.slice(-visibleMessageCount).map(msg => (
-              <ChatMessage key={msg.id} message={msg} />
-            ))}
+            {(() => {
+              const visibleMessages = messages.slice(-visibleMessageCount)
+              let lastDateKey: string | undefined
+              const elements: React.ReactNode[] = []
+
+              visibleMessages.forEach(msg => {
+                const dateKey = new Date(msg.timestamp).toDateString()
+                if (lastDateKey !== undefined && dateKey !== lastDateKey) {
+                  elements.push(
+                    <div key={`date-${dateKey}`} className="flex items-center gap-3 my-4">
+                      <div className="flex-1 h-px bg-[--color-border]" />
+                      <span className="text-xs text-[--color-text-secondary] shrink-0">{getDateLabel(msg.timestamp)}</span>
+                      <div className="flex-1 h-px bg-[--color-border]" />
+                    </div>
+                  )
+                }
+                lastDateKey = dateKey
+                elements.push(<ChatMessage key={msg.id} message={msg} />)
+              })
+
+              return elements
+            })()}
           </div>
         )}
         <div ref={messagesEndRef} />
+        {/* Scroll-to-bottom button */}
+        {userScrolledUp && (
+          <button
+            onClick={() => {
+              messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
+              userScrolledUpRef.current = false
+              setUserScrolledUp(false)
+            }}
+            className="sticky bottom-4 float-right w-9 h-9 rounded-full bg-[--color-primary] text-white shadow-lg flex items-center justify-center hover:opacity-90 transition-opacity"
+          >
+            ↓
+          </button>
+        )}
       </div>
 
       {/* Input */}
       <div className="flex gap-2">
-        <ChatInput
-          ref={chatInputRef}
-          onSend={handleSend}
-          disabled={isStreaming}
-          placeholder={isStreaming ? 'AI 正在回复...' : '输入你的创作需求...'}
-        />
-        {isStreaming && (
-          <button
-            onClick={() => {
-              const id = abortRef.current
-              if (id) {
-                llmService.cancelStream(id).catch(() => {})
-              }
-              settleRef.current?.()
-            }}
-            className="px-3 rounded-lg border border-red-300 text-red-500 hover:bg-red-50 transition-colors text-sm shrink-0"
-          >
-            停止
-          </button>
-        )}
-      </div>
+        <div className="flex-1 min-w-0">
+          <ChatInput
+            ref={chatInputRef}
+            onSend={handleSend}
+            disabled={isStreaming}
+            placeholder={isStreaming ? 'AI 正在回复...' : '输入你的创作需求...'}
+          />
+        </div>
+          {isStreaming && (
+            <button
+              onClick={() => {
+                const id = abortRef.current
+                if (id) {
+                  llmService.cancelStream(id).catch(() => {})
+                }
+                settleRef.current?.()
+              }}
+              className="px-3 rounded-lg border border-red-300 text-red-500 hover:bg-red-50 transition-colors text-sm shrink-0"
+            >
+              停止
+            </button>
+          )}
+        </div>
     </div>
   )
 }

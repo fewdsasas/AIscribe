@@ -3,6 +3,7 @@ import { NovelEditor } from '../components/editor/NovelEditor'
 import { logger } from '../utils/logger'
 import { useMemoryMonitor } from '../hooks/useMemoryMonitor'
 import { chapterService, novelService } from '../services'
+import Skeleton from '../components/shared/Skeleton'
 
 interface ReaderViewProps {
   projectId: string | null
@@ -12,11 +13,26 @@ export const ReaderView: React.FC<ReaderViewProps> = ({ projectId }) => {
   useMemoryMonitor('ReaderView')
   const [chapters, setChapters] = useState<{ id: string; title: string; content: string }[]>([])
   const [selectedChapterIdx, setSelectedChapterIdx] = useState(0)
-  const [fontSize, setFontSize] = useState(18)
+  const [loading, setLoading] = useState(true)
+  const [fontSize, setFontSize] = useState(() => {
+    const saved = localStorage.getItem('reader-font-size')
+    return saved ? Number(saved) : 18
+  })
 
+  // F35: 阅读设置持久化
   useEffect(() => {
-    if (!projectId) return
+    localStorage.setItem('reader-font-size', String(fontSize))
+  }, [fontSize])
+
+  // F33: 章节加载
+  useEffect(() => {
+    if (!projectId) {
+      setChapters([])
+      setLoading(false)
+      return
+    }
     const load = async () => {
+      setLoading(true)
       try {
         const novel = await novelService.get(projectId)
         const novelId = novel?.id ?? projectId
@@ -33,10 +49,25 @@ export const ReaderView: React.FC<ReaderViewProps> = ({ projectId }) => {
         }
       } catch {
         logger.warn('Failed to load reader data')
+      } finally {
+        setLoading(false)
       }
     }
     load()
   }, [projectId])
+
+  // F34: 左右箭头键切换章节
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowLeft') {
+        setSelectedChapterIdx(i => Math.max(0, i - 1))
+      } else if (e.key === 'ArrowRight') {
+        setSelectedChapterIdx(i => Math.min(chapters.length - 1, i + 1))
+      }
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [chapters.length])
 
   const currentChapter = chapters[selectedChapterIdx]
   const parsedContent: Record<string, unknown> | undefined = useMemo(() => {
@@ -48,7 +79,7 @@ export const ReaderView: React.FC<ReaderViewProps> = ({ projectId }) => {
     }
   }, [currentChapter?.content])
 
-  if (!projectId || chapters.length === 0) {
+  if (!projectId || (!loading && chapters.length === 0)) {
     return (
       <div className="h-full flex items-center justify-center" style={{ color: 'var(--color-text-secondary)' }}>
         <div className="text-center">
@@ -104,7 +135,11 @@ export const ReaderView: React.FC<ReaderViewProps> = ({ projectId }) => {
       {/* Reader content */}
       <div className="flex-1 overflow-y-auto min-h-0">
         <div className="mx-auto max-w-2xl">
-          <NovelEditor initialContent={parsedContent} chapterTitle={currentChapter?.title} readOnly placeholder="" />
+          {loading ? (
+            <Skeleton count={8} height="20px" />
+          ) : (
+            <NovelEditor initialContent={parsedContent} chapterTitle={currentChapter?.title} readOnly placeholder="" />
+          )}
         </div>
       </div>
 

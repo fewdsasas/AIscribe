@@ -2,6 +2,8 @@ import React, { useEffect, useRef, useState } from 'react'
 import type { LLMCustomProtocol } from '@shared/types'
 import { DEFAULT_ENDPOINTS, DEFAULT_MODELS } from '@shared/constants'
 import { llmService } from '../../services'
+import Skeleton from '../shared/Skeleton'
+import { ConfirmDialog } from '../shared/ConfirmDialog'
 
 const PROVIDERS = [
   { id: 'openai' as const, label: 'OpenAI' },
@@ -29,6 +31,9 @@ export const LLMConfig: React.FC = () => {
   const [testStatus, setTestStatus] = useState<'idle' | 'testing' | 'success' | 'error'>('idle')
   const [testError, setTestError] = useState<string | null>(null)
   const [showKey, setShowKey] = useState(false)
+  const [loading, setLoading] = useState(true)
+  const [confirmProviderChange, setConfirmProviderChange] = useState(false)
+  const [pendingProviderId, setPendingProviderId] = useState<string | null>(null)
   const savedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // Load config meta from encrypted storage (main process, no apiKey exposed)
@@ -46,6 +51,8 @@ export const LLMConfig: React.FC = () => {
         }
       } catch (err) {
         console.warn('LLM 配置加载失败:', err)
+      } finally {
+        setLoading(false)
       }
     }
     load()
@@ -110,8 +117,53 @@ export const LLMConfig: React.FC = () => {
     setTestError(null)
   }, [provider, apiKey, model, baseUrl, customProtocol])
 
+  const handleProviderChange = (newProviderId: string) => {
+    if (apiKey.trim()) {
+      setPendingProviderId(newProviderId)
+      setConfirmProviderChange(true)
+    } else {
+      applyProviderChange(newProviderId)
+    }
+  }
+
+  const applyProviderChange = (newProviderId: string) => {
+    setProvider(newProviderId)
+    setSaved(false)
+    setError(null)
+    setApiKey('')
+    if (newProviderId === 'custom') {
+      setBaseUrl('')
+      setModel('')
+      return
+    }
+    setBaseUrl(DEFAULT_ENDPOINTS[newProviderId] ?? '')
+    setModel(DEFAULT_MODELS[newProviderId] || '')
+  }
+
+  const handleConfirmProvider = () => {
+    if (pendingProviderId) {
+      applyProviderChange(pendingProviderId)
+    }
+    setConfirmProviderChange(false)
+    setPendingProviderId(null)
+  }
+
+  const handleCancelProvider = () => {
+    setConfirmProviderChange(false)
+    setPendingProviderId(null)
+  }
+
   const isCustom = provider === 'custom'
   const canSubmit = !!apiKey.trim() && !!model.trim() && (!isCustom || !!baseUrl.trim())
+
+  if (loading) {
+    return (
+      <div className="space-y-4">
+        <h3 className="text-base font-medium text-[--color-text]">LLM 配置</h3>
+        <Skeleton count={4} height="48px" />
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-4">
@@ -125,19 +177,7 @@ export const LLMConfig: React.FC = () => {
           {PROVIDERS.map(p => (
             <button
               key={p.id}
-              onClick={() => {
-                setProvider(p.id)
-                setSaved(false)
-                setError(null)
-                setApiKey('')
-                if (p.id === 'custom') {
-                  setBaseUrl('')
-                  setModel('')
-                  return
-                }
-                setBaseUrl(DEFAULT_ENDPOINTS[p.id] ?? '')
-                setModel(DEFAULT_MODELS[p.id] || '')
-              }}
+              onClick={() => handleProviderChange(p.id)}
               className={`px-3 py-2 rounded-lg text-xs border transition-colors ${
                 provider === p.id
                   ? 'border-[--color-primary] bg-[--accent-bg] text-[--color-primary]'
@@ -277,6 +317,17 @@ export const LLMConfig: React.FC = () => {
           {testError}
         </div>
       )}
+
+      <ConfirmDialog
+        open={confirmProviderChange}
+        title="切换供应商"
+        message="切换供应商将清空当前 API Key，是否继续？"
+        confirmLabel="继续"
+        cancelLabel="取消"
+        danger
+        onConfirm={handleConfirmProvider}
+        onCancel={handleCancelProvider}
+      />
     </div>
   )
 }

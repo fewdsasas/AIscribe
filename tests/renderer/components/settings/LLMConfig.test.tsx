@@ -56,6 +56,12 @@ describe('LLMConfig', () => {
 
     fireEvent.click(screen.getByText('Anthropic Claude'))
 
+    // Confirm the provider switch dialog
+    await waitFor(() => {
+      expect(screen.getByText('继续')).toBeInTheDocument()
+    })
+    fireEvent.click(screen.getByText('继续'))
+
     await waitFor(() => {
       expect(apiKeyInput.value).toBe('')
     })

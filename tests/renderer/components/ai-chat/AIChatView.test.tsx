@@ -273,6 +273,12 @@ describe('AIChatView', () => {
 
     fireEvent.click(screen.getByText(/清空对话/))
 
+    // Confirm the clear dialog
+    await waitFor(() => {
+      expect(screen.getByText('清空')).toBeInTheDocument()
+    })
+    fireEvent.click(screen.getByText('清空'))
+
     await waitFor(() => {
       expect(useAppStore.getState().messages.length).toBe(0)
     })

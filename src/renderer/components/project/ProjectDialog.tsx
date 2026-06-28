@@ -15,6 +15,7 @@ export const ProjectDialog: React.FC<ProjectDialogProps> = ({ open, onClose, onC
   const [genre, setGenre] = useState('玄幻')
   const [targetWordCount, setTargetWordCount] = useState('100000')
   const [creating, setCreating] = useState(false)
+  const [creationStep, setCreationStep] = useState<'idle' | 'creating-project' | 'creating-novel' | 'creating-chapter'>('idle')
   const [error, setError] = useState<string | null>(null)
 
   if (!open) return null
@@ -22,8 +23,10 @@ export const ProjectDialog: React.FC<ProjectDialogProps> = ({ open, onClose, onC
   const handleCreate = async () => {
     if (!name.trim()) return
     setCreating(true)
+    setCreationStep('creating-project')
     setError(null)
     try {
+      setCreationStep('creating-project')
       const project = await projectService.create({
         name: name.trim(),
         description: description.trim(),
@@ -34,8 +37,10 @@ export const ProjectDialog: React.FC<ProjectDialogProps> = ({ open, onClose, onC
       if (!project?.id) {
         setError('创建失败，请重试')
         setCreating(false)
+        setCreationStep('idle')
         return
       }
+      setCreationStep('creating-novel')
       const novel = await novelService.create({
         projectId: project.id,
         title: name.trim(),
@@ -48,8 +53,10 @@ export const ProjectDialog: React.FC<ProjectDialogProps> = ({ open, onClose, onC
       if (!novel?.id) {
         setError('小说创建失败，项目可能已部分创建')
         setCreating(false)
+        setCreationStep('idle')
         return
       }
+      setCreationStep('creating-chapter')
       try {
         await chapterService.create({
           novelId: novel.id,
@@ -67,6 +74,7 @@ export const ProjectDialog: React.FC<ProjectDialogProps> = ({ open, onClose, onC
       setError(`创建失败: ${(err as Error).message}`)
     }
     setCreating(false)
+    setCreationStep('idle')
   }
 
   return (
@@ -103,6 +111,15 @@ export const ProjectDialog: React.FC<ProjectDialogProps> = ({ open, onClose, onC
               {error}
             </div>
           )}
+
+          {creationStep !== 'idle' && (
+            <div className="text-xs text-center py-1" style={{ color: 'var(--color-text-secondary)' }}>
+              {creationStep === 'creating-project' && '创建项目...'}
+              {creationStep === 'creating-novel' && '创建小说...'}
+              {creationStep === 'creating-chapter' && '创建章节...'}
+            </div>
+          )}
+
           <div>
             <label className="block text-sm font-medium mb-1" style={{ color: 'var(--text)' }}>
               作品名称 *

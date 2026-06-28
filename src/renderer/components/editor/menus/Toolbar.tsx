@@ -26,7 +26,13 @@ export const Toolbar: React.FC<ToolbarProps> = ({ editor }) => {
     title: string
     children: React.ReactNode
   }> = ({ onClick, isActive, title, children }) => (
-    <button onClick={onClick} className={isActive ? 'is-active' : ''} title={title} type="button">
+    <button
+      onClick={onClick}
+      className={isActive ? 'is-active' : ''}
+      title={title}
+      type="button"
+      aria-pressed={isActive}
+    >
       {children}
     </button>
   )
@@ -81,21 +87,21 @@ export const Toolbar: React.FC<ToolbarProps> = ({ editor }) => {
         isActive={editor.isActive('heading', { level: 1 })}
         title="标题 1"
       >
-        H1
+        <span className="heading-label" style={{ fontWeight: 700, fontSize: '15px' }}>H1</span>
       </ToolButton>
       <ToolButton
         onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
         isActive={editor.isActive('heading', { level: 2 })}
         title="标题 2"
       >
-        H2
+        <span className="heading-label" style={{ fontWeight: 600, fontSize: '13px' }}>H2</span>
       </ToolButton>
       <ToolButton
         onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
         isActive={editor.isActive('heading', { level: 3 })}
         title="标题 3"
       >
-        H3
+        <span className="heading-label" style={{ fontWeight: 600, fontSize: '12px' }}>H3</span>
       </ToolButton>
 
       <div className="separator" />
@@ -106,7 +112,14 @@ export const Toolbar: React.FC<ToolbarProps> = ({ editor }) => {
         isActive={editor.isActive('bulletList')}
         title="无序列表"
       >
-        •≡
+        <svg viewBox="0 0 18 18" width="18" height="18" stroke="currentColor" fill="none">
+          <circle cx="4" cy="5" r="1.5" fill="currentColor" stroke="none" />
+          <line x1="8" y1="5" x2="15" y2="5" stroke-width="1.5" stroke-linecap="round" />
+          <circle cx="4" cy="9" r="1.5" fill="currentColor" stroke="none" />
+          <line x1="8" y1="9" x2="15" y2="9" stroke-width="1.5" stroke-linecap="round" />
+          <circle cx="4" cy="13" r="1.5" fill="currentColor" stroke="none" />
+          <line x1="8" y1="13" x2="15" y2="13" stroke-width="1.5" stroke-linecap="round" />
+        </svg>
       </ToolButton>
       <ToolButton
         onClick={() => editor.chain().focus().toggleOrderedList().run()}
@@ -124,14 +137,22 @@ export const Toolbar: React.FC<ToolbarProps> = ({ editor }) => {
         isActive={editor.isActive('blockquote')}
         title="引用"
       >
-        ❝
+        <svg viewBox="0 0 18 18" width="18" height="18" stroke="currentColor" fill="none">
+          <path d="M5 11V7a2.5 2.5 0 012.5-2.5" stroke-width="1.5" stroke-linecap="round" />
+          <path d="M5 11h3V7.5H5z" stroke-width="1.5" />
+          <path d="M10 11V7a2.5 2.5 0 012.5-2.5" stroke-width="1.5" stroke-linecap="round" />
+          <path d="M10 11h3V7.5h-3z" stroke-width="1.5" />
+        </svg>
       </ToolButton>
       <ToolButton
         onClick={() => editor.chain().focus().toggleCode().run()}
         isActive={editor.isActive('code')}
         title="行内代码"
       >
-        {'</>'}
+        <svg viewBox="0 0 18 18" width="18" height="18" stroke="currentColor" fill="none">
+          <path d="M5.5 6L3 9l2.5 3" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+          <path d="M12.5 6l2.5 3-2.5 3" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+        </svg>
       </ToolButton>
 
       <div className="separator" />

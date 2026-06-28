@@ -56,6 +56,16 @@ const NavIcon: React.FC<{ d: string }> = ({ d }) => (
   </svg>
 )
 
+const SHORTCUT_KEYS: Record<string, string> = {
+  dashboard: '1',
+  editor: '2',
+  reader: '3',
+  studio: '4',
+  workshop: '5',
+  'ai-chat': '6',
+  settings: '7'
+}
+
 export const Sidebar = React.memo<SidebarProps>(({ currentView, onNavigate }) => {
   const { isMobile } = useResponsive()
   const [isOpen, setIsOpen] = useState(false)
@@ -134,6 +144,7 @@ export const Sidebar = React.memo<SidebarProps>(({ currentView, onNavigate }) =>
               >
                 <NavIcon d={item.icon} />
                 <span>{item.label}</span>
+                <kbd className="ml-auto text-[10px] text-[--color-text-secondary] opacity-50">Ctrl+{SHORTCUT_KEYS[item.id]}</kbd>
               </button>
             )
           })}

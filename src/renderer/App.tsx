@@ -108,7 +108,11 @@ const App: React.FC = () => {
           return <DashboardView onSelectProject={handleSelectProject} onNewProject={handleNewProject} />
       }
     })()
-    return <ViewLoader>{view}</ViewLoader>
+    return (
+      <div key={currentView} className="animate-fade-in-up h-full">
+        <ViewLoader>{view}</ViewLoader>
+      </div>
+    )
   }
 
   return (
