@@ -1,5 +1,5 @@
 import React, { useEffect, useMemo, useState } from 'react'
-import { NovelEditor } from '../components/editor/NovelEditor'
+import { SimpleReader } from '../components/reader/SimpleReader'
 import { logger } from '../utils/logger'
 import { useMemoryMonitor } from '../hooks/useMemoryMonitor'
 import { chapterService, novelService } from '../services'
@@ -138,7 +138,7 @@ export const ReaderView: React.FC<ReaderViewProps> = ({ projectId }) => {
           {loading ? (
             <Skeleton count={8} height="20px" />
           ) : (
-            <NovelEditor initialContent={parsedContent} chapterTitle={currentChapter?.title} readOnly placeholder="" />
+            <SimpleReader content={parsedContent ?? { type: 'doc', content: [] }} />
           )}
         </div>
       </div>

@@ -63,6 +63,25 @@ describe('ServiceRegistry', () => {
     expect(instance.value).toBe(2)
   })
 
+  it('should resolve services registered with registerAsync', async () => {
+    registry = new ServiceRegistry()
+    const factory = vi.fn().mockResolvedValue({ value: 3 })
+    registry.registerAsync('async-service', factory)
+    const instance = await registry.resolveAsync<{ value: number }>('async-service')
+    expect(instance.value).toBe(3)
+    expect(factory).toHaveBeenCalledTimes(1)
+
+    const cached = await registry.resolveAsync<{ value: number }>('async-service')
+    expect(cached).toBe(instance)
+    expect(factory).toHaveBeenCalledTimes(1)
+  })
+
+  it('should include async-registered services in has()', () => {
+    registry = new ServiceRegistry()
+    registry.registerAsync('async-only', async () => ({ value: 4 }))
+    expect(registry.has('async-only')).toBe(true)
+  })
+
   it('should close stateful services', async () => {
     registry = new ServiceRegistry()
     const learning: ILearningEngine = { close: vi.fn() } as unknown as ILearningEngine

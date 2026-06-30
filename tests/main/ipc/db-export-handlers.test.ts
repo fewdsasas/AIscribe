@@ -32,7 +32,11 @@ vi.mock('../../../src/main/export', () => ({
   ExportEngine: class {
     constructor(_db: IDatabase) {}
     async exportProject(options: any) {
-      return { success: true, path: `/tmp/export-${options.projectId}.md` }
+      const isLarge = options.includeSynopsis === false
+      return {
+        content: isLarge ? '中'.repeat(500_000) : `# Export\n\n${options.projectId}`,
+        filename: `export-${options.projectId}.md`
+      }
     }
   }
 }))
@@ -88,12 +92,44 @@ describe('DB and Export IPC Handlers', () => {
 
       const result = await handler(null, { projectId: project.id, format: 'markdown' })
       expect(result).toBeDefined()
-      expect(result.success).toBe(true)
+      expect(result.chunked).toBe(false)
+      expect(result.content).toContain(project.id)
     })
 
     it('should reject invalid project ID', async () => {
       const handler = getRegisteredHandler('export:project')
       await expect(handler(null, { projectId: 'invalid', format: 'markdown' })).rejects.toThrow('项目ID 格式无效')
+    })
+
+    it('should chunk large export payloads', async () => {
+      const exportHandler = getRegisteredHandler('export:project')
+      const chunkHandler = getRegisteredHandler('export:project:chunk')
+      const project = await db.createProject({ name: 'Large Export', genre: 'fantasy', status: 'planning' })
+
+      const first = await exportHandler(null, { projectId: project.id, format: 'markdown', includeSynopsis: false })
+      expect(first.chunked).toBe(true)
+      expect(first.totalChunks).toBeGreaterThan(1)
+
+      const chunks: string[] = []
+      for (let i = 0; i < first.totalChunks; i++) {
+        const part = await chunkHandler(null, { chunkId: first.chunkId, index: i })
+        chunks[part.index] = part.data
+      }
+      expect(chunks.join('')).toBe('中'.repeat(500_000))
+    })
+
+    it('should reject expired chunk session', async () => {
+      const exportHandler = getRegisteredHandler('export:project')
+      const chunkHandler = getRegisteredHandler('export:project:chunk')
+      const project = await db.createProject({ name: 'Chunk TTL', genre: 'fantasy', status: 'planning' })
+
+      const first = await exportHandler(null, { projectId: project.id, format: 'markdown', includeSynopsis: false })
+      await expect(chunkHandler(null, { chunkId: '550e8400-e29b-41d4-a716-446655440000', index: 0 })).rejects.toThrow(
+        '分块会话不存在或已过期'
+      )
+      await expect(chunkHandler(null, { chunkId: first.chunkId, index: first.totalChunks })).rejects.toThrow(
+        '分块索引越界'
+      )
     })
   })
 })

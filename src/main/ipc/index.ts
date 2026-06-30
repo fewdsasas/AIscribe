@@ -1,5 +1,6 @@
 import type { IpcMain, IpcMainInvokeEvent } from 'electron'
 import { MAX_STRING_LENGTH } from '../../shared/constants'
+import { estimatePayloadSize, LARGE_PAYLOAD_THRESHOLD } from '../../shared/utils/ipc-payload'
 import { withPermission } from './permission'
 import { logger } from '../utils/logger'
 import type { ServiceRegistry } from '../di'
@@ -53,8 +54,8 @@ export function wrap<TArgs extends unknown[], TReturn>(
   return async (_event: Electron.IpcMainInvokeEvent, ...args: TArgs) => {
     try {
       // 检查 payload 大小，超阈值告警
-      const payloadSize = JSON.stringify(args || []).length
-      if (payloadSize > 1_000_000) {
+      const payloadSize = estimatePayloadSize(args || [])
+      if (payloadSize > LARGE_PAYLOAD_THRESHOLD) {
         logger.warn(`[IPC] Large payload on channel: ${payloadSize} bytes`)
       }
       return await fn(...args)

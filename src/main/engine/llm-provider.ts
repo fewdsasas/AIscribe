@@ -5,6 +5,8 @@ import { validateEndpoint } from './url-validator'
 
 const MAX_STREAM_BUFFER_SIZE = 1024 * 1024
 const TEST_CONNECTION_TIMEOUT_MS = 15_000
+const FIRST_BYTE_TIMEOUT_MS = 30_000
+const BACKPRESSURE_CHUNK_BYTES = 16 * 1024
 
 // ===== Type Guards =====
 
@@ -405,41 +407,59 @@ export class LLMProvider {
       : request.messages
 
     const controller = new AbortController()
+    let reader: ReadableStreamDefaultReader<Uint8Array> | null = null
     let streamFinished = false
+    let aborted = false
+    let firstByteReceived = false
+    let totalTimeoutId: NodeJS.Timeout | null = null
+    let firstByteTimeoutId: NodeJS.Timeout | null = null
 
     if (requestId) {
       this.activeControllers.set(requestId, controller)
     }
 
-    let reader: ReadableStreamDefaultReader<Uint8Array> | null = null
-
-    const releaseReader = (cancel?: boolean) => {
+    const releaseReader = () => {
       if (!reader) return
       try {
-        if (cancel) reader.cancel()
         reader.releaseLock()
       } catch {
-        /* reader already released or cancelled */
+        /* reader already released */
       }
       reader = null
     }
 
-    const cleanup = (cancel = false) => {
-      if (!streamFinished) {
-        streamFinished = true
-        clearTimeout(timeoutId)
-      }
+    const cleanup = (cancelReader = false) => {
+      if (streamFinished) return
+      streamFinished = true
+      if (totalTimeoutId) clearTimeout(totalTimeoutId)
+      if (firstByteTimeoutId) clearTimeout(firstByteTimeoutId)
       if (requestId) this.activeControllers.delete(requestId)
-      releaseReader(cancel)
+      if (cancelReader && reader) {
+        try {
+          reader.cancel()
+        } catch {
+          /* reader already cancelled or closed */
+        }
+      }
+      releaseReader()
     }
 
-    const timeoutId = setTimeout(() => {
-      if (!streamFinished) {
-        controller.abort()
-        cleanup(true)
-        callbacks.onError('LLM stream timed out')
-      }
+    const abort = (cancelReader = false) => {
+      if (aborted) return
+      aborted = true
+      controller.abort()
+      cleanup(cancelReader)
+    }
+
+    totalTimeoutId = setTimeout(() => {
+      abort(true)
+      callbacks.onError('LLM stream timed out')
     }, LLM_STREAM_TIMEOUT_MS)
+
+    firstByteTimeoutId = setTimeout(() => {
+      abort(true)
+      callbacks.onError('LLM stream first byte timeout')
+    }, FIRST_BYTE_TIMEOUT_MS)
 
     try {
       const body = strategy.buildRequestBody(config, messages, true)
@@ -479,69 +499,107 @@ export class LLMProvider {
       const decoder = new TextDecoder()
       let buffer = ''
       let usage: { promptTokens: number; completionTokens: number; totalTokens: number } | undefined
+      let sentBytesSinceYield = 0
+
+      const parseDataLine = (data: string) => {
+        if (data === '[DONE]') return
+        try {
+          const parsed: Record<string, unknown> = JSON.parse(data)
+          let content = ''
+
+          if (parsed.choices && Array.isArray(parsed.choices) && parsed.choices[0]) {
+            const choice = isRecord(parsed.choices[0]) ? parsed.choices[0] : undefined
+            if (choice) {
+              const delta = safeGetRecord(choice, 'delta')
+              if (delta) {
+                content = safeGetString(delta, 'content') ?? safeGetString(choice, 'text') ?? ''
+              } else {
+                content = safeGetString(choice, 'text') ?? ''
+              }
+            }
+          } else if (parsed.type === 'content_block_delta') {
+            const delta = safeGetRecord(parsed, 'delta')
+            content = delta ? (safeGetString(delta, 'text') ?? '') : ''
+          } else if (parsed.content && Array.isArray(parsed.content) && parsed.content[0]) {
+            const block = isRecord(parsed.content[0]) ? parsed.content[0] : undefined
+            content = block ? (safeGetString(block, 'text') ?? '') : ''
+          }
+
+          if (content) {
+            callbacks.onChunk(content)
+            sentBytesSinceYield += new TextEncoder().encode(content).length
+          }
+
+          if (parsed.usage) {
+            usage = strategy.extractUsage(parsed)
+          }
+        } catch {
+          /* skip unparseable chunks */
+        }
+      }
+
+      const maybeYield = async () => {
+        if (sentBytesSinceYield >= BACKPRESSURE_CHUNK_BYTES) {
+          sentBytesSinceYield = 0
+          await new Promise(resolve => setTimeout(resolve, 0))
+        }
+      }
 
       while (true) {
-        const { done, value } = await reader.read()
+        let result: ReadableStreamReadResult<Uint8Array>
+        try {
+          result = await reader.read()
+        } catch (readError) {
+          if (this.isAbortError(readError)) {
+            abort(false)
+            return
+          }
+          abort(true)
+          callbacks.onError(`LLM stream failed: ${readError instanceof Error ? readError.message : String(readError)}`)
+          return
+        }
+
+        const { done, value } = result
         if (done) {
+          if (buffer.trim()) {
+            const trimmed = buffer.trim()
+            if (trimmed.startsWith('data:')) {
+              parseDataLine(trimmed.slice(5).trim())
+            }
+          }
           cleanup()
-          break
+          callbacks.onDone(usage)
+          return
+        }
+
+        if (!firstByteReceived) {
+          firstByteReceived = true
+          if (firstByteTimeoutId) {
+            clearTimeout(firstByteTimeoutId)
+            firstByteTimeoutId = null
+          }
         }
 
         buffer += decoder.decode(value, { stream: true })
         if (buffer.length > MAX_STREAM_BUFFER_SIZE) {
-          cleanup(true)
+          abort(true)
           callbacks.onError('Stream buffer overflow')
           return
         }
-        // Incremental line parsing: extract each complete line as soon as a
-        // newline is found, avoiding a full buffer.split on every chunk.
+
         let newlineIdx: number
         while ((newlineIdx = buffer.indexOf('\n')) >= 0) {
           const line = buffer.slice(0, newlineIdx)
           buffer = buffer.slice(newlineIdx + 1)
           const trimmed = line.trim()
           if (!trimmed || !trimmed.startsWith('data:')) continue
-
-          const data = trimmed.slice(5).trim()
-          if (data === '[DONE]') continue
-
-          try {
-            const parsed: Record<string, unknown> = JSON.parse(data)
-            let content = ''
-
-            if (parsed.choices && Array.isArray(parsed.choices) && parsed.choices[0]) {
-              const choice = isRecord(parsed.choices[0]) ? parsed.choices[0] : undefined
-              if (choice) {
-                const delta = safeGetRecord(choice, 'delta')
-                if (delta) {
-                  content = safeGetString(delta, 'content') ?? safeGetString(choice, 'text') ?? ''
-                } else {
-                  content = safeGetString(choice, 'text') ?? ''
-                }
-              }
-            } else if (parsed.type === 'content_block_delta') {
-              const delta = safeGetRecord(parsed, 'delta')
-              content = delta ? (safeGetString(delta, 'text') ?? '') : ''
-            } else if (parsed.content && Array.isArray(parsed.content) && parsed.content[0]) {
-              const block = isRecord(parsed.content[0]) ? parsed.content[0] : undefined
-              content = block ? (safeGetString(block, 'text') ?? '') : ''
-            }
-
-            if (content) callbacks.onChunk(content)
-
-            if (parsed.usage) {
-              usage = strategy.extractUsage(parsed)
-            }
-          } catch {
-            /* skip unparseable chunks */
-          }
+          parseDataLine(trimmed.slice(5).trim())
         }
-      }
 
-      cleanup()
-      callbacks.onDone(usage)
+        await maybeYield()
+      }
     } catch (error) {
-      cleanup(true)
+      abort(false)
       if (this.isAbortError(error)) return
 
       callbacks.onError(`LLM stream failed: ${error instanceof Error ? error.message : String(error)}`)

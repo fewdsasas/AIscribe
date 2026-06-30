@@ -60,6 +60,25 @@ describe('sanitizeError', () => {
   })
 })
 
+describe('wrap payload size warning', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('should warn when payload exceeds 1MB', async () => {
+    const wrapped = wrap((arg: string) => arg)
+    const largeArg = 'x'.repeat(1024 * 1024 + 100)
+    await wrapped({} as any, largeArg)
+    expect(logger.warn).toHaveBeenCalledWith(expect.stringMatching(/\[IPC\] Large payload on channel: \d+ bytes/))
+  })
+
+  it('should not warn for small payloads', async () => {
+    const wrapped = wrap((arg: string) => arg)
+    await wrapped({} as any, 'small payload')
+    expect(logger.warn).not.toHaveBeenCalled()
+  })
+})
+
 describe('handleIPCError (via wrap)', () => {
   beforeEach(() => {
     vi.clearAllMocks()

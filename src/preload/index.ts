@@ -1,11 +1,13 @@
 import { contextBridge, ipcRenderer } from 'electron'
 import type {
+  ChunkedExportResult,
   CreateChapterData,
   CreateCharacterData,
   CreateCheckpointData,
   CreateNovelData,
   CreateProjectData,
   CreateSessionData,
+  ExportChunk,
   ExportResult,
   RecordLearningData,
   SaveOutlineData,
@@ -129,8 +131,25 @@ const api = {
 
   dbTables: () => ipcRenderer.invoke('db:tables'),
 
-  exportProject: (options: { projectId: string; format: string; includeSynopsis?: boolean }): Promise<ExportResult> =>
-    ipcRenderer.invoke('export:project', options),
+  exportProject: async (options: {
+    projectId: string
+    format: string
+    includeSynopsis?: boolean
+  }): Promise<ExportResult> => {
+    const first = (await ipcRenderer.invoke('export:project', options)) as ChunkedExportResult
+    if (!first.chunked) {
+      return { content: first.content, filename: first.filename }
+    }
+    const chunks: string[] = []
+    for (let i = 0; i < first.totalChunks; i++) {
+      const part = (await ipcRenderer.invoke('export:project:chunk', {
+        chunkId: first.chunkId,
+        index: i
+      })) as ExportChunk
+      chunks[part.index] = part.data
+    }
+    return { content: chunks.join(''), filename: first.filename }
+  },
 
   // Secure encrypted storage
   secureStorageSet: (key: string, value: string) => ipcRenderer.invoke('storage:encryptSet', key, value),

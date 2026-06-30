@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { logger } from '../utils/logger'
-import { memoryService } from '../services'
+import { memoryService } from '../services/memoryService'
 
 /**
  * 视图级内存监控 Hook

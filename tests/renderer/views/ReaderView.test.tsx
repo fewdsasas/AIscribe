@@ -4,6 +4,11 @@ import { ReaderView } from '@renderer/views/ReaderView'
 import { chapterService, novelService } from '@renderer/services'
 import type { Chapter, Novel } from '@shared/types'
 
+const sampleContent = JSON.stringify({
+  type: 'doc',
+  content: [{ type: 'paragraph', content: [{ type: 'text', text: '第一章内容' }] }]
+})
+
 vi.mock('@renderer/services', () => ({
   novelService: {
     get: vi.fn()
@@ -11,10 +16,6 @@ vi.mock('@renderer/services', () => ({
   chapterService: {
     listWithContent: vi.fn()
   }
-}))
-
-vi.mock('@renderer/components/editor/NovelEditor', () => ({
-  NovelEditor: () => <div data-testid="novel-editor">Editor</div>
 }))
 
 const mockedNovelService = vi.mocked(novelService)
@@ -25,8 +26,8 @@ describe('ReaderView', () => {
     vi.clearAllMocks()
     mockedNovelService.get.mockResolvedValue({ id: 'novel-1' } as Novel)
     mockedChapterService.listWithContent.mockResolvedValue([
-      { id: 'ch1', title: '第一章', content: '{}' },
-      { id: 'ch2', title: '第二章', content: '{}' }
+      { id: 'ch1', title: '第一章', content: sampleContent },
+      { id: 'ch2', title: '第二章', content: sampleContent }
     ] as Chapter[])
   })
 
@@ -40,14 +41,16 @@ describe('ReaderView', () => {
     await waitFor(() => {
       expect(screen.getByText('1 / 2')).toBeInTheDocument()
     })
-    expect(screen.getByTestId('novel-editor')).toBeInTheDocument()
+    expect(screen.getByText('第一章内容')).toBeInTheDocument()
   })
 
   it('should allow font size adjustment', async () => {
-    mockedChapterService.listWithContent.mockResolvedValue([{ id: 'ch1', title: '第一章', content: '{}' }] as Chapter[])
+    mockedChapterService.listWithContent.mockResolvedValue([
+      { id: 'ch1', title: '第一章', content: sampleContent }
+    ] as Chapter[])
     render(<ReaderView projectId="proj-1" />)
     await waitFor(() => {
-      expect(screen.getByTestId('novel-editor')).toBeInTheDocument()
+      expect(screen.getByText('第一章内容')).toBeInTheDocument()
     })
     expect(screen.getByText('18px')).toBeInTheDocument()
     fireEvent.click(screen.getByText('A+'))
@@ -57,10 +60,12 @@ describe('ReaderView', () => {
   })
 
   it('should clamp font size between 14 and 28', async () => {
-    mockedChapterService.listWithContent.mockResolvedValue([{ id: 'ch1', title: '第一章', content: '{}' }] as Chapter[])
+    mockedChapterService.listWithContent.mockResolvedValue([
+      { id: 'ch1', title: '第一章', content: sampleContent }
+    ] as Chapter[])
     render(<ReaderView projectId="proj-1" />)
     await waitFor(() => {
-      expect(screen.getByTestId('novel-editor')).toBeInTheDocument()
+      expect(screen.getByText('第一章内容')).toBeInTheDocument()
     })
     fireEvent.click(screen.getByText('A-'))
     expect(screen.getByText('16px')).toBeInTheDocument()

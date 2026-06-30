@@ -169,3 +169,9 @@ export type SkillListItem = { name: string; description: string }
 export type SkillDetailItem = { name: string; description: string; category: SkillCategory }
 
 export type ExportResult = { content: string; filename: string }
+
+export type ChunkedExportResult =
+  | { content: string; filename: string; chunked: false }
+  | { chunkId: string; totalChunks: number; filename: string; chunked: true }
+
+export type ExportChunk = { index: number; data: string }

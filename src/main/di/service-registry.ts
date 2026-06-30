@@ -37,10 +37,19 @@ export type ServiceToken =
  */
 export class ServiceRegistry {
   private factories = new Map<ServiceToken | string, () => unknown>()
+  private asyncFactories = new Map<ServiceToken | string, () => Promise<unknown>>()
   private instances = new Map<ServiceToken | string, unknown>()
 
   register<T>(token: ServiceToken | string, factory: () => T): void {
     this.factories.set(token, factory as () => unknown)
+  }
+
+  /**
+   * Register a factory that returns a Promise. The registry will await the
+   * promise once on first resolution and cache the resolved instance.
+   */
+  registerAsync<T>(token: ServiceToken | string, factory: () => Promise<T>): void {
+    this.asyncFactories.set(token, factory as () => Promise<unknown>)
   }
 
   resolve<T>(token: ServiceToken | string): T {
@@ -66,16 +75,36 @@ export class ServiceRegistry {
 
   /** Return true if the token has a registered factory or instance. */
   has(token: ServiceToken | string): boolean {
-    return this.factories.has(token) || this.instances.has(token)
+    return this.factories.has(token) || this.asyncFactories.has(token) || this.instances.has(token)
   }
 
   /**
-   * Async variant of resolve. The default implementation simply awaits the
-   * synchronous resolver; callers may override this on the instance for
-   * services that require async initialization (e.g. the Database).
+   * Async variant of resolve. Async-registered factories are awaited on first
+   * resolution; synchronous factories that return a Promise are also awaited
+   * for backward compatibility.
    */
-  resolveAsync = async <T>(token: ServiceToken | string): Promise<T> => {
-    return this.resolve<T>(token)
+  async resolveAsync<T>(token: ServiceToken | string): Promise<T> {
+    if (this.instances.has(token)) {
+      return this.instances.get(token) as T
+    }
+    const asyncFactory = this.asyncFactories.get(token)
+    if (asyncFactory) {
+      const instance = await asyncFactory()
+      this.instances.set(token, instance)
+      return instance as T
+    }
+    const factory = this.factories.get(token)
+    if (!factory) {
+      throw new Error(`Service not registered: ${token}`)
+    }
+    const instance = factory()
+    if (instance instanceof Promise) {
+      const resolved = await instance
+      this.instances.set(token, resolved)
+      return resolved as T
+    }
+    this.instances.set(token, instance)
+    return instance as T
   }
 
   /** Close stateful services in reverse initialization order. */
@@ -229,6 +258,7 @@ export async function createDefaultServiceRegistry(): Promise<ServiceRegistry> {
   registry.register(DATABASE_TOKEN, () => {
     throw new Error('Database must be resolved asynchronously via registry.resolveAsync()')
   })
+  registry.registerAsync(DATABASE_TOKEN, getDbInstance)
 
   registry.register(LLM_PROVIDER_TOKEN, () => {
     const provider = LLMProviderFactory.create()
@@ -240,34 +270,24 @@ export async function createDefaultServiceRegistry(): Promise<ServiceRegistry> {
     return new SkillLoaderAdapter(new SkillLoader(llm))
   })
   registry.register(LEARNING_ENGINE_TOKEN, () => {
-    // Wait for the actual Database instance; this is safe because handlers use async resolveAsync().
     throw new Error('LearningEngine must be resolved asynchronously')
   })
-
-  // Patch resolveAsync for services that require async initialization.
-  registry.resolveAsync = async <T>(token: ServiceToken | string): Promise<T> => {
-    if (token === DATABASE_TOKEN) {
-      return (await getDbInstance()) as T
-    }
-    if (token === LEARNING_ENGINE_TOKEN) {
-      const db = await getDbInstance()
-      const writerId = crypto.createHash('sha256').update(app.getPath('userData')).digest('hex').slice(0, 32)
-      const engine = LearningEngine.create(db, writerId)
-      engine.setSaveProfileCallback(async profile => {
-        try {
-          db.saveWriterModel(profile)
-        } catch (e) {
-          logger.error('Learning profile save failed:', e)
-        }
-      })
-      registry.set(LEARNING_ENGINE_TOKEN, new LearningEngineAdapter(engine))
-      return registry.resolve<T>(LEARNING_ENGINE_TOKEN)
-    }
-    return registry.resolve<T>(token)
-  }
+  registry.registerAsync(LEARNING_ENGINE_TOKEN, async () => {
+    const db = await registry.resolveAsync<IDatabase>(DATABASE_TOKEN)
+    const writerId = crypto.createHash('sha256').update(app.getPath('userData')).digest('hex').slice(0, 32)
+    const engine = LearningEngine.create(db, writerId)
+    engine.setSaveProfileCallback(async profile => {
+      try {
+        db.saveWriterModel(profile)
+      } catch (e) {
+        logger.error('Learning profile save failed:', e)
+      }
+    })
+    return new LearningEngineAdapter(engine)
+  })
 
   // Seed the database instance eagerly so sync resolves work after init.
-  const db = await getDbInstance()
+  const db = await registry.resolveAsync<IDatabase>(DATABASE_TOKEN)
   registry.set(DATABASE_TOKEN, db)
 
   return registry

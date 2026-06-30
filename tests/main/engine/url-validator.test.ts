@@ -88,27 +88,19 @@ describe('validateEndpoint', () => {
 
     // 以下 IP 首段 >= 128，修复后应被正确识别为私有/保留地址并阻止。
     it('http://192.168.1.1/api 被阻止（192.168.0.0/16）', () => {
-      expect(() => validateEndpoint('http://192.168.1.1/api')).toThrow(
-        /不允许连接到私有网络地址: 192\.168\.1\.1/
-      )
+      expect(() => validateEndpoint('http://192.168.1.1/api')).toThrow(/不允许连接到私有网络地址: 192\.168\.1\.1/)
     })
 
     it('http://172.16.0.1/api 被阻止（172.16.0.0/12）', () => {
-      expect(() => validateEndpoint('http://172.16.0.1/api')).toThrow(
-        /不允许连接到私有网络地址: 172\.16\.0\.1/
-      )
+      expect(() => validateEndpoint('http://172.16.0.1/api')).toThrow(/不允许连接到私有网络地址: 172\.16\.0\.1/)
     })
 
     it('http://169.254.1.1/api 被阻止（link-local）', () => {
-      expect(() => validateEndpoint('http://169.254.1.1/api')).toThrow(
-        /不允许连接到私有网络地址: 169\.254\.1\.1/
-      )
+      expect(() => validateEndpoint('http://169.254.1.1/api')).toThrow(/不允许连接到私有网络地址: 169\.254\.1\.1/)
     })
 
     it('http://224.0.0.1/api 被阻止（multicast）', () => {
-      expect(() => validateEndpoint('http://224.0.0.1/api')).toThrow(
-        /不允许连接到私有网络地址: 224\.0\.0\.1/
-      )
+      expect(() => validateEndpoint('http://224.0.0.1/api')).toThrow(/不允许连接到私有网络地址: 224\.0\.0\.1/)
     })
 
     it('http://255.255.255.255/api 被阻止（broadcast）', () => {

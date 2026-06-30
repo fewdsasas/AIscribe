@@ -35,6 +35,28 @@ describe('LLMProvider', () => {
     provider.resetConfig()
   })
 
+  function createMockStreamResponseWithSpies(chunks: string[]) {
+    const encoder = new TextEncoder()
+    let index = 0
+    const cancel = vi.fn()
+    const releaseLock = vi.fn()
+    const read = vi.fn(async () => {
+      if (index < chunks.length) {
+        return { done: false, value: encoder.encode(chunks[index++]) }
+      }
+      return { done: true, value: undefined }
+    })
+    return {
+      response: {
+        ok: true,
+        body: { getReader: () => ({ read, cancel, releaseLock }) }
+      },
+      cancel,
+      releaseLock,
+      read
+    }
+  }
+
   afterEach(() => {
     vi.unstubAllGlobals()
   })
@@ -642,28 +664,6 @@ describe('LLMProvider', () => {
       vi.restoreAllMocks()
     })
 
-    function createMockStreamResponseWithSpies(chunks: string[]) {
-      const encoder = new TextEncoder()
-      let index = 0
-      const cancel = vi.fn()
-      const releaseLock = vi.fn()
-      const read = vi.fn(async () => {
-        if (index < chunks.length) {
-          return { done: false, value: encoder.encode(chunks[index++]) }
-        }
-        return { done: true, value: undefined }
-      })
-      return {
-        response: {
-          ok: true,
-          body: { getReader: () => ({ read, cancel, releaseLock }) }
-        },
-        cancel,
-        releaseLock,
-        read
-      }
-    }
-
     it('should parse SSE lines and call onChunk with delta.content', async () => {
       const mock = createMockStreamResponseWithSpies(['data: {"choices":[{"delta":{"content":"hello"}}]}\n\n'])
       vi.stubGlobal('fetch', vi.fn().mockResolvedValue(mock.response))
@@ -1058,28 +1058,6 @@ describe('LLMProvider', () => {
         model: 'gpt-4o'
       })
 
-      function createMockStreamResponseWithSpies(chunks: string[]) {
-        const encoder = new TextEncoder()
-        let index = 0
-        const read = vi.fn(async () => {
-          if (index < chunks.length) {
-            return { done: false, value: encoder.encode(chunks[index++]) }
-          }
-          return { done: true, value: undefined }
-        })
-        const cancel = vi.fn()
-        const releaseLock = vi.fn()
-        return {
-          response: {
-            ok: true,
-            body: { getReader: () => ({ read, cancel, releaseLock }) }
-          },
-          cancel,
-          releaseLock,
-          read
-        }
-      }
-
       const mock = createMockStreamResponseWithSpies(['data: {"choices":[{"delta":{},"text":"fallback text"}]}\n\n'])
       vi.stubGlobal('fetch', vi.fn().mockResolvedValue(mock.response))
 
@@ -1092,6 +1070,123 @@ describe('LLMProvider', () => {
       expect(onChunk).toHaveBeenCalledWith('fallback text')
       expect(onDone).toHaveBeenCalled()
       expect(onError).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('chatStream robustness', () => {
+    beforeEach(() => {
+      provider.configure({
+        provider: 'openai',
+        apiKey: 'sk-stream-key',
+        model: 'gpt-4o'
+      })
+    })
+
+    afterEach(() => {
+      vi.useRealTimers()
+    })
+
+    it('should parse final SSE line without trailing newline', async () => {
+      const mock = createMockStreamResponseWithSpies([
+        'data: {"choices":[{"delta":{"content":"hello"}}]}\n\n' + 'data: {"choices":[{"delta":{"content":" world"}}]}'
+      ])
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue(mock.response))
+
+      const onChunk = vi.fn()
+      const onDone = vi.fn()
+      const onError = vi.fn()
+
+      await provider.chatStream({ messages: [{ role: 'user', content: 'Hi' }] }, { onChunk, onDone, onError })
+
+      expect(onChunk).toHaveBeenCalledWith('hello')
+      expect(onChunk).toHaveBeenCalledWith(' world')
+      expect(onDone).toHaveBeenCalled()
+      expect(onError).not.toHaveBeenCalled()
+    })
+
+    it('should complete a high-volume stream without overflow', async () => {
+      const chunks = Array.from(
+        { length: 50 },
+        (_, i) => `data: {"choices":[{"delta":{"content":"chunk-${i}-${'x'.repeat(400)}"}}]}\n\n`
+      )
+      const mock = createMockStreamResponseWithSpies(chunks)
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue(mock.response))
+
+      const onChunk = vi.fn()
+      const onDone = vi.fn()
+      const onError = vi.fn()
+
+      await provider.chatStream({ messages: [{ role: 'user', content: 'Hi' }] }, { onChunk, onDone, onError })
+
+      expect(onChunk).toHaveBeenCalledTimes(50)
+      expect(onDone).toHaveBeenCalled()
+      expect(onError).not.toHaveBeenCalled()
+    })
+
+    it('should remove controller from activeControllers after stream completion', async () => {
+      const mock = createMockStreamResponseWithSpies(['data: {"choices":[{"delta":{"content":"done"}}]}\n\n'])
+      vi.stubGlobal('fetch', vi.fn().mockResolvedValue(mock.response))
+
+      const onChunk = vi.fn()
+      const onDone = vi.fn()
+      const onError = vi.fn()
+
+      await provider.chatStream(
+        { messages: [{ role: 'user', content: 'Hi' }] },
+        { onChunk, onDone, onError },
+        'openai',
+        'req-cleanup'
+      )
+
+      expect(provider.cancelStream('req-cleanup')).toBe(false)
+    })
+
+    it('should trigger first byte timeout when no data arrives', async () => {
+      vi.useFakeTimers({ shouldAdvanceTime: true })
+
+      let capturedSignal: AbortSignal | undefined
+      const cancel = vi.fn()
+      const releaseLock = vi.fn()
+
+      const read = vi.fn().mockImplementation(() => {
+        return new Promise<ReadableStreamReadResult<Uint8Array>>((_, reject) => {
+          if (capturedSignal?.aborted) {
+            reject(new DOMException('Aborted', 'AbortError'))
+            return
+          }
+          const handler = () => reject(new DOMException('Aborted', 'AbortError'))
+          capturedSignal?.addEventListener('abort', handler)
+        })
+      })
+
+      vi.stubGlobal(
+        'fetch',
+        vi.fn().mockImplementation((_url, options) => {
+          capturedSignal = options.signal
+          return Promise.resolve({
+            ok: true,
+            body: { getReader: () => ({ read, cancel, releaseLock }) }
+          })
+        })
+      )
+
+      const onChunk = vi.fn()
+      const onDone = vi.fn()
+      const onError = vi.fn()
+
+      const streamPromise = provider.chatStream(
+        { messages: [{ role: 'user', content: 'Hi' }] },
+        { onChunk, onDone, onError },
+        'openai',
+        'req-first-byte'
+      )
+
+      vi.advanceTimersByTime(31_000)
+      await streamPromise
+
+      expect(onError).toHaveBeenCalledWith('LLM stream first byte timeout')
+      expect(onDone).not.toHaveBeenCalled()
+      expect(provider.cancelStream('req-first-byte')).toBe(false)
     })
   })
 

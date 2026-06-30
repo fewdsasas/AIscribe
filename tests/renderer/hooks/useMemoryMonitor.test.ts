@@ -3,9 +3,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { renderHook } from '@testing-library/react'
 import { useMemoryMonitor } from '@renderer/hooks/useMemoryMonitor'
-import { memoryService } from '@renderer/services'
+import { memoryService } from '@renderer/services/memoryService'
 
-vi.mock('@renderer/services', () => ({
+vi.mock('@renderer/services/memoryService', () => ({
   memoryService: {
     getMemoryUsage: vi.fn()
   }
