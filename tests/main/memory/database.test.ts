@@ -343,6 +343,60 @@ describe('Database', () => {
     })
   })
 
+  describe('Boundary cases', () => {
+    it('should cascade delete characters and worlds when project is deleted', () => {
+      const projectId = testId()
+      const novelId = testId()
+      const characterId = testId()
+
+      db.createProject({
+        id: projectId,
+        name: 'Cascade Test',
+        description: '',
+        genre: 'fantasy',
+        status: 'planning',
+        wordCount: 0
+      })
+      db.createNovel({
+        id: novelId,
+        projectId,
+        title: 'Cascade Novel',
+        author: '',
+        synopsis: '',
+        genre: 'fantasy',
+        tags: [],
+        targetAudience: ''
+      })
+      db.createCharacter({
+        id: characterId,
+        novelId,
+        name: 'Cascade Character',
+        role: 'protagonist',
+        personality: {
+          traits: ['勇敢'],
+          virtues: ['忠诚'],
+          flaws: ['固执'],
+          motivations: ['寻找真相'],
+          coreBelief: '知识就是力量'
+        },
+        background: '',
+        appearance: '',
+        abilities: [],
+        goals: [],
+        fears: [],
+        secrets: [],
+        arc: { type: 'positive', startingState: '', endingState: '', catalyst: '', keyMoments: [] },
+        relationships: []
+      })
+
+      db.deleteProject(projectId)
+
+      expect(db.getProject(projectId)).toBeNull()
+      expect(db.getNovel(novelId)).toBeNull()
+      expect(db.listCharacters(novelId)).toHaveLength(0)
+    })
+  })
+
   describe('Database migrations', () => {
     it('should track schema version', () => {
       const version = db.getSchemaVersion()

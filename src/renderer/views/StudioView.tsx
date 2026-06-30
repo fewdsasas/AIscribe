@@ -59,11 +59,11 @@ export const StudioView: React.FC<StudioViewProps> = ({ projectId }) => {
   }, [fetchData])
 
   const tabIds: StudioTab[] = ['structure', 'characters', 'world']
-  const { activeIndex: _activeIndex, handleKeyDown } = useKeyboardNav({
+  const { handleKeyDown } = useKeyboardNav({
     items: tabIds,
     direction: 'horizontal',
     loop: true,
-    onActivate: (i) => setActiveTab(tabIds[i])
+    onActivate: i => setActiveTab(tabIds[i])
   })
 
   const tabs: { id: StudioTab; label: string; icon: string }[] = [
@@ -120,7 +120,10 @@ export const StudioView: React.FC<StudioViewProps> = ({ projectId }) => {
       </div>
 
       {/* Content */}
-      <div key={activeTab} className="animate-fade-in-up flex-1 bg-surface rounded-xl border border-[--color-border] p-6">
+      <div
+        key={activeTab}
+        className="animate-fade-in-up flex-1 bg-surface rounded-xl border border-[--color-border] p-6"
+      >
         {activeTab === 'structure' &&
           (beats.length > 0 ? (
             <PlotTimeline beats={beats} framework="三幕剧" />

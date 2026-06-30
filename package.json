@@ -25,7 +25,8 @@
     "lint": "eslint src tests --report-unused-disable-directives --max-warnings=0",
     "lint:fix": "eslint src tests --fix",
     "format": "prettier --write \"src/**/*.{ts,tsx}\" \"tests/**/*.{ts,tsx}\"",
-    "format:check": "prettier --check \"src/**/*.{ts,tsx}\" \"tests/**/*.{ts,tsx}\""
+    "format:check": "prettier --check \"src/**/*.{ts,tsx}\" \"tests/**/*.{ts,tsx}\"",
+    "ci": "npm run typecheck && npm run lint && npm run format:check && npm run test:unit"
   },
   "dependencies": {
     "react": "^18.3.1",

@@ -89,7 +89,12 @@ export const TopBar = React.memo<TopBarProps>(
               <ChatIcon />
             </button>
           )}
-          <button className="topbar-btn" onClick={onToggleTheme} title={_isDark ? '切换到亮色模式' : '切换到暗色模式'} aria-label="切换明暗主题">
+          <button
+            className="topbar-btn"
+            onClick={onToggleTheme}
+            title={_isDark ? '切换到亮色模式' : '切换到暗色模式'}
+            aria-label="切换明暗主题"
+          >
             <ThemeIcon isDark={_isDark ?? false} />
           </button>
         </div>

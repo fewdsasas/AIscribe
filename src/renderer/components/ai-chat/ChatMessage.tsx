@@ -15,12 +15,23 @@ function renderContent(text: string): React.ReactNode {
         if (!subPart) return null
         if (/^(https?:\/\/[^\s<]+)$/.test(subPart)) {
           return (
-            <a key={`${i}-${j}`} href={subPart} target="_blank" rel="noopener noreferrer" className="underline" style={{ color: 'var(--accent)' }}>
+            <a
+              key={`${i}-${j}`}
+              href={subPart}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline"
+              style={{ color: 'var(--accent)' }}
+            >
               {subPart}
             </a>
           )
         }
-        return <span key={`${i}-${j}`} style={{ whiteSpace: 'pre-wrap' }}>{subPart}</span>
+        return (
+          <span key={`${i}-${j}`} style={{ whiteSpace: 'pre-wrap' }}>
+            {subPart}
+          </span>
+        )
       })
     }
 
@@ -36,9 +47,7 @@ function renderContent(text: string): React.ReactNode {
 
     return (
       <div key={i}>
-        {language && (
-          <div className="text-xs text-[--color-text-secondary] px-4 pt-2">{language}</div>
-        )}
+        {language && <div className="text-xs text-[--color-text-secondary] px-4 pt-2">{language}</div>}
         <pre className="bg-[--ink-900] text-[--ink-100] p-4 rounded-lg overflow-x-auto my-2 text-sm font-mono">
           <code>{codeContent}</code>
         </pre>

@@ -256,26 +256,26 @@ export const EditorView: React.FC<EditorViewProps> = ({ projectId, onSwitchProje
           >
             📁 切换项目
           </button>
-            <div
-              className={`absolute top-full left-0 mt-1 w-48 bg-surface rounded-xl border shadow-lg z-10 py-1 transition-all duration-200 ease-out ${showProjectNav ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
-              style={{ borderColor: 'var(--color-border)' }}
-            >
-              {projects.length === 0 ? (
-                <div className="px-3 py-2 text-xs text-[--color-text-secondary]">暂无其他项目</div>
-              ) : (
-                projects.map(p => (
-                  <button
-                    key={p.id}
-                    onClick={() => handleSwitchProject(p.id)}
-                    className="w-full text-left px-3 py-2 text-xs hover:bg-[--color-bg] transition-colors"
-                    style={{ color: p.id === projectId ? 'var(--color-primary)' : 'var(--color-text)' }}
-                  >
-                    {p.id === projectId ? '→ ' : ''}
-                    {p.name}
-                  </button>
-                ))
-              )}
-            </div>
+          <div
+            className={`absolute top-full left-0 mt-1 w-48 bg-surface rounded-xl border shadow-lg z-10 py-1 transition-all duration-200 ease-out ${showProjectNav ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+            style={{ borderColor: 'var(--color-border)' }}
+          >
+            {projects.length === 0 ? (
+              <div className="px-3 py-2 text-xs text-[--color-text-secondary]">暂无其他项目</div>
+            ) : (
+              projects.map(p => (
+                <button
+                  key={p.id}
+                  onClick={() => handleSwitchProject(p.id)}
+                  className="w-full text-left px-3 py-2 text-xs hover:bg-[--color-bg] transition-colors"
+                  style={{ color: p.id === projectId ? 'var(--color-primary)' : 'var(--color-text)' }}
+                >
+                  {p.id === projectId ? '→ ' : ''}
+                  {p.name}
+                </button>
+              ))
+            )}
+          </div>
         </div>
 
         <select
@@ -330,9 +330,7 @@ export const EditorView: React.FC<EditorViewProps> = ({ projectId, onSwitchProje
               保存 (Ctrl+S)
             </button>
           </div>
-          {aiContinuing && (
-            <div className="h-1 bg-[--accent] rounded animate-pulse w-full mt-1" />
-          )}
+          {aiContinuing && <div className="h-1 bg-[--accent] rounded animate-pulse w-full mt-1" />}
         </div>
       </div>
 

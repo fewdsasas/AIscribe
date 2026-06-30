@@ -144,7 +144,9 @@ export const Sidebar = React.memo<SidebarProps>(({ currentView, onNavigate }) =>
               >
                 <NavIcon d={item.icon} />
                 <span>{item.label}</span>
-                <kbd className="ml-auto text-[10px] text-[--color-text-secondary] opacity-50">Ctrl+{SHORTCUT_KEYS[item.id]}</kbd>
+                <kbd className="ml-auto text-[10px] text-[--color-text-secondary] opacity-50">
+                  Ctrl+{SHORTCUT_KEYS[item.id]}
+                </kbd>
               </button>
             )
           })}

@@ -25,7 +25,10 @@ export const WorkshopView: React.FC<WorkshopViewProps> = ({ projectId: _projectI
     items: skills,
     direction: 'vertical',
     loop: true,
-    onActivate: (i) => { setSelectedSkill(skills[i].name); setResult(null) }
+    onActivate: i => {
+      setSelectedSkill(skills[i].name)
+      setResult(null)
+    }
   })
 
   useEffect(() => {

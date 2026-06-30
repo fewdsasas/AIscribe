@@ -15,7 +15,9 @@ export const ProjectDialog: React.FC<ProjectDialogProps> = ({ open, onClose, onC
   const [genre, setGenre] = useState('玄幻')
   const [targetWordCount, setTargetWordCount] = useState('100000')
   const [creating, setCreating] = useState(false)
-  const [creationStep, setCreationStep] = useState<'idle' | 'creating-project' | 'creating-novel' | 'creating-chapter'>('idle')
+  const [creationStep, setCreationStep] = useState<'idle' | 'creating-project' | 'creating-novel' | 'creating-chapter'>(
+    'idle'
+  )
   const [error, setError] = useState<string | null>(null)
 
   if (!open) return null

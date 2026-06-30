@@ -105,7 +105,9 @@ export const ExportDialog: React.FC<ExportDialogProps> = ({ projectId, projectNa
           {/* Exporting progress */}
           {exporting && (
             <div className="space-y-2">
-              <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>正在导出...</p>
+              <p className="text-xs" style={{ color: 'var(--color-text-secondary)' }}>
+                正在导出...
+              </p>
               <Skeleton count={1} height="8px" rounded="rounded-full" />
             </div>
           )}

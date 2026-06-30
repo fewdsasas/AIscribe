@@ -33,6 +33,7 @@ import { registerWorldHandlers } from '../../../src/main/ipc/world.ipc'
 import { registerCheckpointHandlers } from '../../../src/main/ipc/checkpoint.ipc'
 import { registerWriterHandlers } from '../../../src/main/ipc/writer.ipc'
 import { registerStorageHandlers } from '../../../src/main/ipc/storage.ipc'
+import { registerExportHandlers } from '../../../src/main/ipc/export.ipc'
 
 describe('Extended IPC Handlers', () => {
   const testDir = path.join(__dirname, '../../temp')
@@ -50,6 +51,7 @@ describe('Extended IPC Handlers', () => {
     registerCheckpointHandlers(mockIpcMain as any, registry)
     registerWriterHandlers(mockIpcMain as any, registry)
     registerStorageHandlers(mockIpcMain as any, registry)
+    registerExportHandlers(mockIpcMain as any, registry)
   })
 
   afterAll(() => {
@@ -504,6 +506,46 @@ describe('Extended IPC Handlers', () => {
     it('should reject invalid novelId', async () => {
       const handler = getRegisteredHandler('outline:get')
       await expect(handler(null, '')).rejects.toThrow()
+    })
+  })
+
+  describe('export:project', () => {
+    it('should reject invalid project ID', async () => {
+      const handler = getRegisteredHandler('export:project')
+      await expect(handler(null, { projectId: 'invalid-id', format: 'markdown' })).rejects.toThrow('项目ID 格式无效')
+    })
+
+    it('should reject unsupported export format', async () => {
+      const handler = getRegisteredHandler('export:project')
+      await expect(handler(null, { projectId: '00000000-0000-0000-0000-000000000001', format: 'pdf' })).rejects.toThrow(
+        '导出格式 必须是以下值之一: txt, markdown, html'
+      )
+    })
+
+    it('should reject non-object options', async () => {
+      const handler = getRegisteredHandler('export:project')
+      await expect(handler(null, null)).rejects.toThrow('导出选项 格式无效')
+    })
+
+    it('should export project in markdown format', async () => {
+      const handler = getRegisteredHandler('export:project')
+      const project = await db.createProject({ name: 'Export Test', genre: 'fantasy', status: 'planning' })
+      const novel = await db.createNovel({
+        projectId: project.id,
+        title: 'Export Novel',
+        author: 'Test Author',
+        synopsis: '',
+        genre: 'fantasy',
+        tags: [],
+        targetAudience: ''
+      })
+      await db.createChapter({ novelId: novel.id, title: 'Chapter 1', content: '' })
+
+      const result = await handler(null, { projectId: project.id, format: 'markdown' })
+      expect(result).toBeDefined()
+      expect(result.content).toContain('# Export Novel')
+      expect(result.content).toContain('## Chapter 1')
+      expect(result.filename).toMatch(/\.md$/)
     })
   })
 })

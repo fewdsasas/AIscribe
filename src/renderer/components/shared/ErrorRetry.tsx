@@ -6,11 +6,7 @@ interface ErrorRetryProps {
   className?: string
 }
 
-export const ErrorRetry: React.FC<ErrorRetryProps> = ({
-  message = '加载失败，请重试',
-  onRetry,
-  className = ''
-}) => {
+export const ErrorRetry: React.FC<ErrorRetryProps> = ({ message = '加载失败，请重试', onRetry, className = '' }) => {
   return (
     <div className={`flex flex-col items-center justify-center gap-4 ${className}`}>
       <span className="text-4xl">⚠️</span>

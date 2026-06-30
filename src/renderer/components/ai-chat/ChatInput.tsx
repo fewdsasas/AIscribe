@@ -20,7 +20,17 @@ export interface ChatInputHandle {
 }
 
 export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
-  ({ onSend, disabled = false, placeholder = '输入你的创作需求...', skills: _skills = [], isStreaming = false, onStop }, ref) => {
+  (
+    {
+      onSend,
+      disabled = false,
+      placeholder = '输入你的创作需求...',
+      skills: _skills = [],
+      isStreaming = false,
+      onStop
+    },
+    ref
+  ) => {
     const [text, setText] = useState('')
     const [selectedSkill, setSelectedSkill] = useState<string | null>(null)
     const textareaRef = useRef<HTMLTextAreaElement>(null)
@@ -129,9 +139,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
               </div>
             )}
             {text.length > 0 && (
-              <div className="text-[10px] text-right text-[--color-text-secondary] mt-1">
-                Shift+Enter 换行
-              </div>
+              <div className="text-[10px] text-right text-[--color-text-secondary] mt-1">Shift+Enter 换行</div>
             )}
           </div>
 

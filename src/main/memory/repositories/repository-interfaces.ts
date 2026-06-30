@@ -45,21 +45,25 @@ export interface INovelRepository {
 export interface ICharacterRepository {
   create(data: Partial<Omit<Character, 'id' | 'createdAt' | 'updatedAt'>> & { id?: string }): Character
   listByNovel(novelId: string): Character[]
+  clearCache(): void
 }
 
 export interface IWorldRepository {
   getByNovel(novelId: string): World | null
   save(data: Partial<Omit<World, 'id' | 'createdAt' | 'updatedAt'>> & { id?: string }): World
+  clearCache(): void
 }
 
 export interface IPlotStructureRepository {
   getByNovel(novelId: string): PlotStructure | null
   save(data: Partial<Omit<PlotStructure, 'id'>> & { id?: string }): PlotStructure
+  clearCache(): void
 }
 
 export interface IOutlineRepository {
   getByNovel(novelId: string): Outline | null
   save(data: Partial<Omit<Outline, 'id' | 'createdAt' | 'updatedAt'>> & { id?: string }): Outline
+  clearCache(): void
 }
 
 export interface ICheckpointRepository {

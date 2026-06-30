@@ -87,21 +87,27 @@ export const Toolbar: React.FC<ToolbarProps> = ({ editor }) => {
         isActive={editor.isActive('heading', { level: 1 })}
         title="标题 1"
       >
-        <span className="heading-label" style={{ fontWeight: 700, fontSize: '15px' }}>H1</span>
+        <span className="heading-label" style={{ fontWeight: 700, fontSize: '15px' }}>
+          H1
+        </span>
       </ToolButton>
       <ToolButton
         onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}
         isActive={editor.isActive('heading', { level: 2 })}
         title="标题 2"
       >
-        <span className="heading-label" style={{ fontWeight: 600, fontSize: '13px' }}>H2</span>
+        <span className="heading-label" style={{ fontWeight: 600, fontSize: '13px' }}>
+          H2
+        </span>
       </ToolButton>
       <ToolButton
         onClick={() => editor.chain().focus().toggleHeading({ level: 3 }).run()}
         isActive={editor.isActive('heading', { level: 3 })}
         title="标题 3"
       >
-        <span className="heading-label" style={{ fontWeight: 600, fontSize: '12px' }}>H3</span>
+        <span className="heading-label" style={{ fontWeight: 600, fontSize: '12px' }}>
+          H3
+        </span>
       </ToolButton>
 
       <div className="separator" />

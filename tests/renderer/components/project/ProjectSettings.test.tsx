@@ -45,7 +45,9 @@ describe('ProjectSettings', () => {
       expect(mockedProjectService.get).toHaveBeenCalledWith('p1')
     })
 
-    expect(screen.getByDisplayValue('测试作品')).toBeInTheDocument()
+    await waitFor(() => {
+      expect(screen.getByDisplayValue('测试作品')).toBeInTheDocument()
+    })
     expect(screen.getByDisplayValue('测试简介')).toBeInTheDocument()
 
     const [genreSelect, statusSelect] = screen.getAllByRole('combobox')

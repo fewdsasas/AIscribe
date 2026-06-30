@@ -131,5 +131,49 @@ describe('NovelStructureExtension', () => {
 
       editor.destroy()
     })
+
+    it('should create empty paragraphs without text content array', () => {
+      const editor = new Editor({
+        extensions: [StarterKit, NovelStructureExtension]
+      })
+
+      editor.commands.insertContent({
+        type: 'sceneBlock',
+        attrs: { sceneNumber: 5 },
+        content: [{ type: 'paragraph' }]
+      })
+
+      const json = editor.getJSON()
+      const sceneBlock = json.content?.find(n => n.type === 'sceneBlock')
+      expect(sceneBlock).toBeDefined()
+      const paragraph = sceneBlock?.content?.[0]
+      expect(paragraph?.type).toBe('paragraph')
+      expect(paragraph?.content).toBeUndefined()
+
+      editor.destroy()
+    })
+
+    it('should serialize and deserialize a large document without data loss', () => {
+      const editor = new Editor({
+        extensions: [StarterKit, NovelStructureExtension]
+      })
+
+      const paragraphCount = 1000
+      const content = Array.from({ length: paragraphCount }, (_, i) => ({
+        type: 'sceneBlock',
+        attrs: { sceneNumber: i + 1 },
+        content: [{ type: 'paragraph', content: [{ type: 'text', text: `Paragraph ${i + 1}` }] }]
+      }))
+
+      editor.commands.setContent(content)
+
+      const json = editor.getJSON()
+      const sceneBlocks = json.content?.filter(n => n.type === 'sceneBlock') ?? []
+      expect(sceneBlocks.length).toBe(paragraphCount)
+      expect(sceneBlocks[0].attrs?.sceneNumber).toBe(1)
+      expect(sceneBlocks[paragraphCount - 1].attrs?.sceneNumber).toBe(paragraphCount)
+
+      editor.destroy()
+    })
   })
 })

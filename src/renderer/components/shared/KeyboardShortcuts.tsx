@@ -86,15 +86,38 @@ export const KeyboardShortcutHandler: React.FC<{
         className="bg-[--color-surface] rounded-xl p-6 shadow-xl max-w-md w-full mx-4"
         onClick={e => e.stopPropagation()}
       >
-        <h2 className="text-lg font-medium mb-4" style={{ color: 'var(--color-text)' }}>快捷键帮助</h2>
+        <h2 className="text-lg font-medium mb-4" style={{ color: 'var(--color-text)' }}>
+          快捷键帮助
+        </h2>
         <ul className="space-y-2 text-sm" style={{ color: 'var(--color-text-secondary)' }}>
-          <li className="flex justify-between"><span>切换视图</span><kbd className="text-[10px] opacity-50">Ctrl+1~7</kbd></li>
-          <li className="flex justify-between"><span>新建项目</span><kbd className="text-[10px] opacity-50">Ctrl+N</kbd></li>
-          <li className="flex justify-between"><span>保存</span><kbd className="text-[10px] opacity-50">Ctrl+S</kbd></li>
-          <li className="flex justify-between"><span>打开设置</span><kbd className="text-[10px] opacity-50">Ctrl+,</kbd></li>
-          <li className="flex justify-between"><span>全局搜索</span><kbd className="text-[10px] opacity-50">Ctrl+K</kbd></li>
-          <li className="flex justify-between"><span>发送消息</span><kbd className="text-[10px] opacity-50">Enter</kbd></li>
-          <li className="flex justify-between"><span>换行</span><kbd className="text-[10px] opacity-50">Shift+Enter</kbd></li>
+          <li className="flex justify-between">
+            <span>切换视图</span>
+            <kbd className="text-[10px] opacity-50">Ctrl+1~7</kbd>
+          </li>
+          <li className="flex justify-between">
+            <span>新建项目</span>
+            <kbd className="text-[10px] opacity-50">Ctrl+N</kbd>
+          </li>
+          <li className="flex justify-between">
+            <span>保存</span>
+            <kbd className="text-[10px] opacity-50">Ctrl+S</kbd>
+          </li>
+          <li className="flex justify-between">
+            <span>打开设置</span>
+            <kbd className="text-[10px] opacity-50">Ctrl+,</kbd>
+          </li>
+          <li className="flex justify-between">
+            <span>全局搜索</span>
+            <kbd className="text-[10px] opacity-50">Ctrl+K</kbd>
+          </li>
+          <li className="flex justify-between">
+            <span>发送消息</span>
+            <kbd className="text-[10px] opacity-50">Enter</kbd>
+          </li>
+          <li className="flex justify-between">
+            <span>换行</span>
+            <kbd className="text-[10px] opacity-50">Shift+Enter</kbd>
+          </li>
         </ul>
         <button
           onClick={() => setShowHelp(false)}

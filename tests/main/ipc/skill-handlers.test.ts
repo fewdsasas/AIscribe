@@ -96,5 +96,11 @@ describe('Skill IPC Handlers', () => {
       const handler = getRegisteredHandler('skill:invoke')
       await expect(handler(null, 'test-skill', { prompt: '' })).rejects.toThrow('提示词 不能为空')
     })
+
+    it('should reject non-object input', async () => {
+      const handler = getRegisteredHandler('skill:invoke')
+      await expect(handler(null, 'test-skill', null)).rejects.toThrow('技能输入 格式无效')
+      await expect(handler(null, 'test-skill', undefined)).rejects.toThrow('技能输入 格式无效')
+    })
   })
 })

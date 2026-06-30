@@ -86,26 +86,35 @@ describe('validateEndpoint', () => {
       expect(() => validateEndpoint('http://10.0.0.1/api')).toThrow('10.0.0.1')
     })
 
-    // 以下 IP 首段 >= 128，由于 ipv4ToInt 的 `>>> 0` 与 `&` 运算的有符号/无符号不一致，
-    // CIDR 匹配失败，当前实现未能阻止这些私有 IP。此为已知实现缺陷，测试记录现状。
-    it('http://192.168.1.1/api 当前未被阻止（实现缺陷：首段 >= 128 时 CIDR 匹配失败）', () => {
-      expect(validateEndpoint('http://192.168.1.1/api')).toBe('http://192.168.1.1/api')
+    // 以下 IP 首段 >= 128，修复后应被正确识别为私有/保留地址并阻止。
+    it('http://192.168.1.1/api 被阻止（192.168.0.0/16）', () => {
+      expect(() => validateEndpoint('http://192.168.1.1/api')).toThrow(
+        /不允许连接到私有网络地址: 192\.168\.1\.1/
+      )
     })
 
-    it('http://172.16.0.1/api 当前未被阻止（实现缺陷：172.16.0.0/12 未生效）', () => {
-      expect(validateEndpoint('http://172.16.0.1/api')).toBe('http://172.16.0.1/api')
+    it('http://172.16.0.1/api 被阻止（172.16.0.0/12）', () => {
+      expect(() => validateEndpoint('http://172.16.0.1/api')).toThrow(
+        /不允许连接到私有网络地址: 172\.16\.0\.1/
+      )
     })
 
-    it('http://169.254.1.1/api 当前未被阻止（实现缺陷：link-local 未生效）', () => {
-      expect(validateEndpoint('http://169.254.1.1/api')).toBe('http://169.254.1.1/api')
+    it('http://169.254.1.1/api 被阻止（link-local）', () => {
+      expect(() => validateEndpoint('http://169.254.1.1/api')).toThrow(
+        /不允许连接到私有网络地址: 169\.254\.1\.1/
+      )
     })
 
-    it('http://224.0.0.1/api 当前未被阻止（实现缺陷：multicast 未生效）', () => {
-      expect(validateEndpoint('http://224.0.0.1/api')).toBe('http://224.0.0.1/api')
+    it('http://224.0.0.1/api 被阻止（multicast）', () => {
+      expect(() => validateEndpoint('http://224.0.0.1/api')).toThrow(
+        /不允许连接到私有网络地址: 224\.0\.0\.1/
+      )
     })
 
-    it('http://255.255.255.255/api 当前未被阻止（实现缺陷：broadcast 未生效）', () => {
-      expect(validateEndpoint('http://255.255.255.255/api')).toBe('http://255.255.255.255/api')
+    it('http://255.255.255.255/api 被阻止（broadcast）', () => {
+      expect(() => validateEndpoint('http://255.255.255.255/api')).toThrow(
+        /不允许连接到私有网络地址: 255\.255\.255\.255/
+      )
     })
 
     it('172.32.0.1 不被阻止（172.16.0.0/12 范围之外，公网段）', () => {

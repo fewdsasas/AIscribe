@@ -62,6 +62,9 @@ export function registerNovelHandlers(ipcMain: IpcMain, services: ServiceRegistr
     'chapter:counts',
     wrap(async (novelIds: string[]) => {
       if (!Array.isArray(novelIds)) throw new Error('novelIds 必须为数组')
+      for (const id of novelIds) {
+        requireId(id, '小说ID')
+      }
       const d = await services.resolveAsync<IDatabase>(DATABASE_TOKEN)
       return d.getChapterCounts(novelIds)
     })

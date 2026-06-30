@@ -26,7 +26,8 @@ function isPrivateIP(hostname: string): boolean {
   if (parts.some(p => p < 0 || p > 255)) return false
 
   const ipInt = ipv4ToInt(parts)
-  return PRIVATE_CIDR_BLOCKS.some(block => (ipInt & block.mask) === block.ip)
+  // Bitwise & returns a signed 32-bit integer; convert back to unsigned for comparison.
+  return PRIVATE_CIDR_BLOCKS.some(block => ((ipInt & block.mask) >>> 0) === block.ip)
 }
 
 export function validateEndpoint(url: string): string {

@@ -1,7 +1,6 @@
 import { useEffect } from 'react'
 
-const FOCUSABLE_SELECTOR =
-  'a, button, input, select, textarea, [tabindex]:not([tabindex="-1"])'
+const FOCUSABLE_SELECTOR = 'a, button, input, select, textarea, [tabindex]:not([tabindex="-1"])'
 
 function getFocusableElements(container: HTMLElement): HTMLElement[] {
   const elements = container.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)
@@ -14,10 +13,7 @@ function getFocusableElements(container: HTMLElement): HTMLElement[] {
   })
 }
 
-export function useFocusTrap(
-  containerRef: React.RefObject<HTMLElement | null>,
-  isActive: boolean
-): void {
+export function useFocusTrap(containerRef: React.RefObject<HTMLElement | null>, isActive: boolean): void {
   useEffect(() => {
     if (!isActive || !containerRef.current) return
 

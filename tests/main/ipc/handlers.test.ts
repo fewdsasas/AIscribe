@@ -411,5 +411,10 @@ describe('IPC Handlers', () => {
       const handler = getRegisteredHandler('chapter:counts')
       await expect(handler(null, 'not-array')).rejects.toThrow('novelIds 必须为数组')
     })
+
+    it('should reject invalid novel IDs in array', async () => {
+      const handler = getRegisteredHandler('chapter:counts')
+      await expect(handler(null, ['invalid-id'])).rejects.toThrow('小说ID 格式无效')
+    })
   })
 })

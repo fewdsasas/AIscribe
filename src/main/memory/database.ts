@@ -367,13 +367,17 @@ export class Database implements IDatabase {
    * DELETE — accurate here because create() runs single-threaded.
    */
   cleanupOldTrajectories(daysToKeep = 90): number {
+    if (!Number.isInteger(daysToKeep) || daysToKeep <= 0 || daysToKeep > 3650) {
+      throw new Error('daysToKeep 必须是 1-3650 之间的整数')
+    }
     try {
       const countResult = this.sqlDb.exec(
-        `SELECT COUNT(*) AS c FROM trajectories WHERE timestamp < datetime('now', '-${daysToKeep} days')`
+        'SELECT COUNT(*) AS c FROM trajectories WHERE timestamp < datetime("now", ?)',
+        [`-${daysToKeep} days`]
       )
       const deleted = countResult.length > 0 ? ((countResult[0].values[0]?.[0] as number) ?? 0) : 0
       if (deleted > 0) {
-        this.sqlDb.exec(`DELETE FROM trajectories WHERE timestamp < datetime('now', '-${daysToKeep} days')`)
+        this.sqlDb.exec('DELETE FROM trajectories WHERE timestamp < datetime("now", ?)', [`-${daysToKeep} days`])
         this.scheduleSave()
       }
       return deleted
@@ -454,19 +458,45 @@ export class Database implements IDatabase {
   deleteProject(id: string): void {
     // sql.js foreign key cascade enforcement is unreliable in some builds,
     // so we explicitly delete child records to guarantee data integrity.
-    const novel = this.novels.getByProject(id)
-    if (novel) {
-      const chapterSql = 'DELETE FROM chapters WHERE novel_id = ?'
-      this.operationLog?.append(chapterSql, [novel.id])
-      this.sqlDb.run(chapterSql, [novel.id])
+    // Wrap the entire cascade in a transaction for atomicity and better performance.
+    this.sqlDb.run('BEGIN TRANSACTION')
+    try {
+      const novelIds = this.sqlDb
+        .exec('SELECT id FROM novels WHERE project_id = ?', [id])
+        .flatMap(r => r.values.map(row => String(row[0])))
 
-      const novelSql = 'DELETE FROM novels WHERE project_id = ?'
-      this.operationLog?.append(novelSql, [id])
-      this.sqlDb.run(novelSql, [id])
+      if (novelIds.length > 0) {
+        const placeholders = novelIds.map(() => '?').join(', ')
+        const childTables = ['chapters', 'characters', 'worlds', 'plot_structures', 'outlines']
+        for (const table of childTables) {
+          const sql = `DELETE FROM ${table} WHERE novel_id IN (${placeholders})`
+          this.operationLog?.append(sql, novelIds)
+          this.sqlDb.run(sql, novelIds)
+        }
+
+        const novelSql = 'DELETE FROM novels WHERE project_id = ?'
+        this.operationLog?.append(novelSql, [id])
+        this.sqlDb.run(novelSql, [id])
+      }
+
+      this.projects.delete(id)
+      this.sqlDb.run('COMMIT')
+
+      // Clear caches only after a successful commit to avoid dirty reads on rollback.
+      this.novels.clearCache()
+      this.chapters.clearCache()
+      this.characters.clearCache()
+      this.worlds.clearCache()
+      this.outlines.clearCache()
+      this.plotStructures.clearCache()
+    } catch (e) {
+      try {
+        this.sqlDb.run('ROLLBACK')
+      } catch {
+        /* ignore rollback errors */
+      }
+      throw e
     }
-    this.projects.delete(id)
-    this.novels.clearCache()
-    this.chapters.clearCache()
   }
 
   createNovel(data: Parameters<NovelRepository['create']>[0]): Novel {

@@ -18,7 +18,7 @@ const Skeleton: React.FC<SkeletonProps> = ({
   height = '16px',
   rounded = 'rounded',
   className = '',
-  count = 1,
+  count = 1
 }) => {
   const items = Array.from({ length: count })
 

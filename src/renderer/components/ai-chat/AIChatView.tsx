@@ -385,7 +385,11 @@ export const AIChatView: React.FC<AIChatViewProps> = ({ projectId }) => {
         title="清空对话"
         message="确定要清空所有对话记录吗？此操作不可恢复。"
         confirmLabel="清空"
-        onConfirm={() => { clearMessages(); showToast('对话已清空', 'success'); setShowClearConfirm(false) }}
+        onConfirm={() => {
+          clearMessages()
+          showToast('对话已清空', 'success')
+          setShowClearConfirm(false)
+        }}
         onCancel={() => setShowClearConfirm(false)}
       />
 
@@ -495,7 +499,9 @@ export const AIChatView: React.FC<AIChatViewProps> = ({ projectId }) => {
                   elements.push(
                     <div key={`date-${dateKey}`} className="flex items-center gap-3 my-4">
                       <div className="flex-1 h-px bg-[--color-border]" />
-                      <span className="text-xs text-[--color-text-secondary] shrink-0">{getDateLabel(msg.timestamp)}</span>
+                      <span className="text-xs text-[--color-text-secondary] shrink-0">
+                        {getDateLabel(msg.timestamp)}
+                      </span>
                       <div className="flex-1 h-px bg-[--color-border]" />
                     </div>
                   )
@@ -534,21 +540,21 @@ export const AIChatView: React.FC<AIChatViewProps> = ({ projectId }) => {
             placeholder={isStreaming ? 'AI 正在回复...' : '输入你的创作需求...'}
           />
         </div>
-          {isStreaming && (
-            <button
-              onClick={() => {
-                const id = abortRef.current
-                if (id) {
-                  llmService.cancelStream(id).catch(() => {})
-                }
-                settleRef.current?.()
-              }}
-              className="px-3 rounded-lg border border-red-300 text-red-500 hover:bg-red-50 transition-colors text-sm shrink-0"
-            >
-              停止
-            </button>
-          )}
-        </div>
+        {isStreaming && (
+          <button
+            onClick={() => {
+              const id = abortRef.current
+              if (id) {
+                llmService.cancelStream(id).catch(() => {})
+              }
+              settleRef.current?.()
+            }}
+            className="px-3 rounded-lg border border-red-300 text-red-500 hover:bg-red-50 transition-colors text-sm shrink-0"
+          >
+            停止
+          </button>
+        )}
+      </div>
     </div>
   )
 }
