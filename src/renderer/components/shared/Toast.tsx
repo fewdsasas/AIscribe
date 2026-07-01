@@ -16,6 +16,8 @@ const ToastContext = createContext<ToastContextValue>({ showToast: () => {} })
 
 export const useToast = () => useContext(ToastContext)
 
+const VALID_TYPES: ToastType[] = ['success', 'error', 'info']
+
 const ICONS: Record<ToastType, string> = {
   success: '✅',
   error: '❌',
@@ -26,6 +28,10 @@ const COLORS: Record<ToastType, { bg: string; border: string; text: string }> = 
   success: { bg: 'var(--success-bg)', border: 'var(--success)', text: 'var(--success)' },
   error: { bg: 'var(--danger-bg)', border: 'var(--danger)', text: 'var(--danger)' },
   info: { bg: 'var(--accent-bg)', border: 'var(--accent)', text: 'var(--accent)' }
+}
+
+function validateType(type: string): ToastType {
+  return VALID_TYPES.includes(type as ToastType) ? (type as ToastType) : 'info'
 }
 
 export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
@@ -42,8 +48,9 @@ export const ToastProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, [])
 
   const showToast = useCallback((message: string, type: ToastType = 'info') => {
+    const safeType = validateType(type)
     const id = nextId.current++
-    setToasts(prev => [...prev, { id, type, message }])
+    setToasts(prev => [...prev, { id, type: safeType, message }])
     const timer = setTimeout(() => {
       timersRef.current.delete(id)
       setToasts(prev => prev.filter(t => t.id !== id))

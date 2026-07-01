@@ -25,6 +25,7 @@ const createMockEditor = (overrides: Record<string, unknown> = {}) => ({
     dom: document.createElement('div')
   },
   isDestroyed: false,
+  destroy: vi.fn(),
   ...overrides
 })
 

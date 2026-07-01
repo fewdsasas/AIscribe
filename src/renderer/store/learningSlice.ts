@@ -1,5 +1,7 @@
 import type { StateCreator } from 'zustand'
 
+const MAX_SUGGESTIONS = 100
+
 export interface NextActionSuggestion {
   suggestedSkill: string
   reason: string
@@ -21,8 +23,8 @@ export const createLearningSlice: StateCreator<LearningSlice, [], [], LearningSl
   nextActions: [],
   evolvedShortcuts: [],
 
-  setSuggestions: suggestions => set({ suggestions }),
-  setNextActions: nextActions => set({ nextActions }),
-  setEvolvedShortcuts: evolvedShortcuts => set({ evolvedShortcuts }),
+  setSuggestions: suggestions => set({ suggestions: suggestions.slice(0, MAX_SUGGESTIONS) }),
+  setNextActions: nextActions => set({ nextActions: nextActions.slice(0, MAX_SUGGESTIONS) }),
+  setEvolvedShortcuts: evolvedShortcuts => set({ evolvedShortcuts: evolvedShortcuts.slice(0, MAX_SUGGESTIONS) }),
   clearLearning: () => set({ suggestions: [], nextActions: [], evolvedShortcuts: [] })
 })

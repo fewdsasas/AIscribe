@@ -1,5 +1,6 @@
 import type { IpcMainInvokeEvent } from 'electron'
 import { logger } from '../utils/logger'
+import { createIPCError } from './error-utils'
 
 export type Permission = 'read' | 'write' | 'admin'
 
@@ -30,8 +31,8 @@ const PERMISSION_RULES: PermissionRule[] = [
   { channel: 'character:create', permission: 'write' },
   { channel: 'character:list', permission: 'read' },
 
-  { channel: 'plot-structure:get-by-novel', permission: 'read' },
-  { channel: 'plot-structure:save', permission: 'write' },
+  { channel: 'plotStructure:get-by-novel', permission: 'read' },
+  { channel: 'plotStructure:save', permission: 'write' },
   { channel: 'world:get-by-novel', permission: 'read' },
   { channel: 'world:save', permission: 'write' },
 
@@ -54,8 +55,8 @@ const PERMISSION_RULES: PermissionRule[] = [
   { channel: 'learning:summary', permission: 'read' },
   { channel: 'memory:search', permission: 'read' },
 
-  { channel: 'writer-model:get', permission: 'read' },
-  { channel: 'writer-model:save', permission: 'write' },
+  { channel: 'writerModel:get', permission: 'read' },
+  { channel: 'writerModel:save', permission: 'write' },
 
   { channel: 'db:tables', permission: 'admin' },
 
@@ -73,7 +74,14 @@ const PERMISSION_RULES: PermissionRule[] = [
   { channel: 'storage:encryptGet', permission: 'read' },
   { channel: 'storage:encryptRemove', permission: 'write' },
 
-  { channel: 'monitor:memory-usage', permission: 'read' }
+  { channel: 'monitor:memory-usage', permission: 'read' },
+
+  { channel: 'import:select-file', permission: 'read' },
+  { channel: 'novel:import', permission: 'write' },
+  { channel: 'import:ai-repair', permission: 'write' },
+  { channel: 'import:ai-repair-stream', permission: 'write' },
+
+  { channel: 'export:project:chunk', permission: 'write' }
 ]
 
 class PermissionManager {
@@ -114,9 +122,11 @@ export function withPermission<TArgs extends unknown[], TReturn>(
 ): (event: IpcMainInvokeEvent, ...args: TArgs) => Promise<TReturn> {
   return async (event: IpcMainInvokeEvent, ...args: TArgs) => {
     if (!permissionManager.canExecute(channel)) {
-      throw new Error(
-        `Permission denied: '${channel}' requires ${permissionManager.getChannelPermission(channel)} permission`
-      )
+      const required = permissionManager.getChannelPermission(channel)
+      if (!required) {
+        throw createIPCError('PERMISSION_DENIED', `Permission denied: '${channel}' has no permission rule`)
+      }
+      throw createIPCError('PERMISSION_DENIED', `Permission denied: '${channel}' requires ${required} permission`)
     }
     return handler(event, ...args)
   }

@@ -5,6 +5,11 @@
 
 /** Build a map from column names to row values */
 export function buildRowMap(row: unknown[], columns: string[]): Record<string, unknown> {
+  if (row.length !== columns.length) {
+    throw new Error(
+      `Row/column length mismatch: ${row.length} values for ${columns.length} columns`
+    )
+  }
   const map: Record<string, unknown> = {}
   columns.forEach((col, i) => {
     map[col] = row[i]
@@ -22,7 +27,7 @@ export function asNumber(value: unknown): number {
   return typeof value === 'number' ? value : 0
 }
 
-/** Convert a value to optional string */
+/** Convert a value to optional string (preserves null→undefined distinction) */
 export function asOptionalString(value: unknown): string | undefined {
   return typeof value === 'string' ? value : undefined
 }

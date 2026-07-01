@@ -19,6 +19,16 @@ function isPrivateIP(hostname: string): boolean {
   if (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '::1') return true
   if (hostname.endsWith('.local') || hostname.endsWith('.localhost')) return true
 
+  // Check IPv6 private/loopback addresses
+  if (hostname.startsWith('[') && hostname.endsWith(']')) {
+    const ipv6 = hostname.slice(1, -1)
+    const normalized = ipv6.toLowerCase()
+    if (normalized === '::1' || normalized === '0:0:0:0:0:0:0:1') return true
+    if (normalized.startsWith('fe80:')) return true // link-local
+    if (normalized.startsWith('fc') || normalized.startsWith('fd')) return true // unique local
+    if (normalized === '::') return true // unspecified
+  }
+
   const ipv4Match = hostname.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/)
   if (!ipv4Match) return false
 

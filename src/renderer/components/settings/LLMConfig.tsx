@@ -154,7 +154,15 @@ export const LLMConfig: React.FC = () => {
   }
 
   const isCustom = provider === 'custom'
-  const canSubmit = !!apiKey.trim() && !!model.trim() && (!isCustom || !!baseUrl.trim())
+  const baseUrlValid = !isCustom || (!!baseUrl.trim() && (() => {
+    try {
+      const parsed = new URL(baseUrl.trim())
+      return parsed.protocol === 'http:' || parsed.protocol === 'https:'
+    } catch {
+      return false
+    }
+  })())
+  const canSubmit = !!apiKey.trim() && !!model.trim() && baseUrlValid
 
   if (loading) {
     return (

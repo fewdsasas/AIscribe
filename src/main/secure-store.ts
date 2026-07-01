@@ -46,6 +46,8 @@ function deriveLegacyKeys(): Buffer[] {
 
 export class SecureStore {
   private filePath: string
+  /** Set to true when decryption fails due to bad auth tag (likely machine identity change). */
+  readonly loadError: string | null = null
 
   constructor(fileName: string) {
     this.filePath = path.join(app.getPath('userData'), fileName)
@@ -64,6 +66,7 @@ export class SecureStore {
     const tmpPath = this.filePath + '.tmp'
     fs.writeFileSync(tmpPath, payload)
     fs.renameSync(tmpPath, this.filePath)
+    ;(this as { loadError: string | null }).loadError = null
   }
 
   load(): Record<string, unknown> | null {
@@ -113,14 +116,17 @@ export class SecureStore {
         }
       }
 
-      logger.warn(
-        `SecureStore(${path.basename(this.filePath)}): all decryption attempts failed, config may be corrupted or from another machine`
-      )
+      const errorMsg = '配置文件无法解密（可能因设备变更导致密钥不匹配，请重新配置 LLM 提供商）'
+      logger.warn(`SecureStore(${path.basename(this.filePath)}): ${errorMsg}`)
+      ;(this as { loadError: string | null }).loadError = errorMsg
       return null
     } catch (e) {
-      logger.warn(
-        `SecureStore(${path.basename(this.filePath)}): decryption failed, config may be corrupted or from another machine`
-      )
+      const errorMsg =
+        e instanceof Error && e.message.includes('auth')
+          ? '配置文件已损坏（认证标签校验失败，请重新配置 LLM 提供商）'
+          : `配置文件读取失败: ${(e as Error).message}`
+      logger.warn(`SecureStore(${path.basename(this.filePath)}): ${errorMsg}`)
+      ;(this as { loadError: string | null }).loadError = errorMsg
       return null
     }
   }

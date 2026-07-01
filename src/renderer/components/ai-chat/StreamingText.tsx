@@ -8,6 +8,7 @@ interface StreamingTextProps {
 }
 
 export const StreamingText: React.FC<StreamingTextProps> = ({ text, messageId, speed = 30, onComplete }) => {
+  const clampedSpeed = Math.max(1, speed)
   const [displayedLength, setDisplayedLength] = useState(0)
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null)
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null)
@@ -64,7 +65,7 @@ export const StreamingText: React.FC<StreamingTextProps> = ({ text, messageId, s
         }
         return next
       })
-    }, speed)
+    }, clampedSpeed)
 
     return () => {
       clearAllTimers()

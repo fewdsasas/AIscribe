@@ -50,9 +50,12 @@ async function takeSnapshot(label: string): Promise<MemorySnapshot> {
     }
   }
 
-  // Main 进程内存 (via IPC)
+  // Main 进程内存 (via IPC) — 添加 3 秒超时
   try {
-    const mainMem = await memoryService.getMemoryUsage()
+    const mainMem = await Promise.race([
+      memoryService.getMemoryUsage(),
+      new Promise<null>(resolve => setTimeout(() => resolve(null), 3000))
+    ])
     if (mainMem) {
       snapshot.main = {
         heapUsed: mainMem.heapUsed,

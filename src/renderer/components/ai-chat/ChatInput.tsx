@@ -58,7 +58,12 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
     const handleSend = () => {
       const trimmed = text.trim()
       if (!trimmed || disabled) return
-      onSend(trimmed, selectedSkill ?? undefined)
+      try {
+        onSend(trimmed, selectedSkill ?? undefined)
+      } catch {
+        // Preserve text if send fails
+        return
+      }
       setText('')
       if (textareaRef.current) {
         textareaRef.current.style.height = 'auto'
@@ -118,6 +123,7 @@ export const ChatInput = forwardRef<ChatInputHandle, ChatInputProps>(
               onKeyDown={handleKeyDown}
               placeholder={placeholder}
               disabled={disabled}
+              maxLength={100_000}
               rows={1}
               className="w-full px-4 py-2.5 border border-[--color-border] rounded-xl text-sm resize-none focus:outline-none focus:border-[--accent] transition-colors"
               style={{ minHeight: 40, maxHeight: 120, background: 'var(--bg)' }}

@@ -10,6 +10,7 @@ function genId(): string {
 const STORAGE_KEY = 'aiscribe-chat-history'
 const SAVE_DEBOUNCE_MS = CHAT_SAVE_DEBOUNCE_MS
 const MAX_MESSAGES = 500
+const MAX_STREAMING_CONTENT = 500_000
 
 export interface SkillInvocation {
   skillName: string
@@ -172,7 +173,12 @@ export const createChatSlice: StateCreator<ChatSlice, [], [], ChatSlice> = (set,
     appendToMessage: (id, text) => {
       const state = get()
       if (state.isStreaming && state.streamingMessageId === id) {
-        set({ streamingContent: state.streamingContent + text })
+        const newContent = state.streamingContent + text
+        if (newContent.length > MAX_STREAMING_CONTENT) {
+          logger.warn(`Streaming content exceeded ${MAX_STREAMING_CONTENT} characters, truncating`)
+          return
+        }
+        set({ streamingContent: newContent })
       } else {
         set(state => {
           const messages = state.messages.map(m => (m.id === id ? { ...m, content: m.content + text } : m))

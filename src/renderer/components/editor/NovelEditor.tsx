@@ -138,6 +138,15 @@ export const NovelEditor = forwardRef<NovelEditorHandle, NovelEditorProps>(
       }
     })
 
+    // Cleanup editor instance on unmount to prevent memory leaks
+    useEffect(() => {
+      return () => {
+        if (editor) {
+          editor.destroy()
+        }
+      }
+    }, [editor])
+
     // Expose insertContent to parent via ref
     useImperativeHandle(
       ref,
@@ -193,10 +202,15 @@ export const NovelEditor = forwardRef<NovelEditorHandle, NovelEditorProps>(
       return () => dom.removeEventListener('paste', handlePaste)
     }, [editor, readOnly, onContentLimitReached])
 
-    // Update content when initialContent changes
+    // Update content when initialContent actually changes
+    const initialContentHashRef = useRef<string | null>(null)
     useEffect(() => {
       if (editor && initialContent) {
-        editor.commands.setContent(initialContent)
+        const hash = JSON.stringify(initialContent)
+        if (hash !== initialContentHashRef.current) {
+          initialContentHashRef.current = hash
+          editor.commands.setContent(initialContent)
+        }
       }
     }, [editor, initialContent])
 

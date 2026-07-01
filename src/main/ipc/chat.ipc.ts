@@ -1,8 +1,17 @@
 import type { IpcMain } from 'electron'
-import { LLM_PROVIDER_TOKEN, requireEnum, requireObject, sanitizeError, wrap, wrapEvent } from './index'
+import {
+  LLM_PROVIDER_TOKEN,
+  requireEnum,
+  requireNonEmptyString,
+  requireObject,
+  sanitizeError,
+  wrap,
+  wrapEvent
+} from './index'
 import type { ServiceRegistry } from '../di'
 import type { ILLMProvider } from '../di'
 import type { LLMRequest } from '../../shared/types'
+import type { CancelStreamData } from '../../shared/types/ipc'
 
 export function registerChatHandlers(ipcMain: IpcMain, services: ServiceRegistry): void {
   const llm = services.resolve<ILLMProvider>(LLM_PROVIDER_TOKEN)
@@ -13,6 +22,9 @@ export function registerChatHandlers(ipcMain: IpcMain, services: ServiceRegistry
       requireObject(request, 'LLM 请求')
       if (!request.messages?.length) throw new Error('对话消息不能为空')
       for (const msg of request.messages) {
+        if (typeof msg.role !== 'string' || typeof msg.content !== 'string') {
+          throw new Error('每条消息必须包含 role 和 content 字符串')
+        }
         requireEnum(msg.role, ['system', 'user', 'assistant'], '消息角色')
       }
       return llm.chat(request)
@@ -55,11 +67,10 @@ export function registerChatHandlers(ipcMain: IpcMain, services: ServiceRegistry
 
   ipcMain.handle(
     'llm:cancel-stream',
-    wrap((requestId: string) => {
-      if (typeof requestId !== 'string' || !requestId) {
-        throw new Error('requestId 不能为空')
-      }
-      return llm.cancelStream(requestId)
+    wrap((data: CancelStreamData) => {
+      requireObject(data, '取消流数据')
+      requireNonEmptyString(data.requestId, '请求ID')
+      return llm.cancelStream(data.requestId)
     })
   )
 }

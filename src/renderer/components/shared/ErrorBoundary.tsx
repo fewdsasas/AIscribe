@@ -4,16 +4,17 @@ import { logger } from '../../utils/logger'
 interface ErrorBoundaryState {
   hasError: boolean
   error?: Error
+  resetKey: number
 }
 
 export class ErrorBoundary extends React.Component<{ children: React.ReactNode }, ErrorBoundaryState> {
   constructor(props: { children: React.ReactNode }) {
     super(props)
-    this.state = { hasError: false }
+    this.state = { hasError: false, resetKey: 0 }
   }
 
   static getDerivedStateFromError(error: Error): ErrorBoundaryState {
-    return { hasError: true, error }
+    return { hasError: true, error, resetKey: 0 }
   }
 
   componentDidCatch(error: Error, errorInfo: React.ErrorInfo): void {
@@ -21,7 +22,7 @@ export class ErrorBoundary extends React.Component<{ children: React.ReactNode }
   }
 
   handleReset = () => {
-    this.setState({ hasError: false, error: undefined })
+    this.setState(prev => ({ hasError: false, error: undefined, resetKey: prev.resetKey + 1 }))
   }
 
   render() {
@@ -55,6 +56,6 @@ export class ErrorBoundary extends React.Component<{ children: React.ReactNode }
         </div>
       )
     }
-    return this.props.children
+    return <React.Fragment key={this.state.resetKey}>{this.props.children}</React.Fragment>
   }
 }
