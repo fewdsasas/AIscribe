@@ -153,10 +153,15 @@ app.on('window-all-closed', () => {
   }
 })
 
-app.on('before-quit', async () => {
+app.on('before-quit', async event => {
   if (services) {
+    event.preventDefault()
+    const CLOSE_TIMEOUT_MS = 5000
     try {
-      await services.close()
+      await Promise.race([
+        services.close(),
+        new Promise<void>((_, reject) => setTimeout(() => reject(new Error('Service close timeout')), CLOSE_TIMEOUT_MS))
+      ])
     } catch (e) {
       logger.error('Failed to close service registry:', e)
     }

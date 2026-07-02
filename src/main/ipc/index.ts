@@ -1,10 +1,14 @@
 import type { IpcMain, IpcMainInvokeEvent } from 'electron'
 import { MAX_STRING_LENGTH } from '../../shared/constants'
 import { estimatePayloadSize, LARGE_PAYLOAD_THRESHOLD } from '../../shared/utils/ipc-payload'
-import { withPermission } from './permission'
+import { permissionManager, withPermission } from './permission'
 import { logger } from '../utils/logger'
 import type { ServiceRegistry } from '../di'
 import { DATABASE_TOKEN, LEARNING_ENGINE_TOKEN, LLM_PROVIDER_TOKEN, SKILL_LOADER_TOKEN } from '../di'
+import { createIPCError, handleIPCError, sanitizeError } from './error-utils'
+
+// Re-export for backward compatibility
+export { sanitizeError, createIPCError }
 
 export { DATABASE_TOKEN, LLM_PROVIDER_TOKEN, SKILL_LOADER_TOKEN, LEARNING_ENGINE_TOKEN }
 
@@ -56,10 +60,11 @@ export function wrap<TArgs extends unknown[], TReturn>(
       // 检查 payload 大小，超阈值告警
       const payloadSize = estimatePayloadSize(args || [])
       if (payloadSize > LARGE_PAYLOAD_THRESHOLD) {
-        logger.warn(`[IPC] Large payload on channel: ${payloadSize} bytes`)
+        logger.warn(`[IPC] Large payload: ${payloadSize} bytes`)
       }
       return await fn(...args)
     } catch (e) {
+      logger.error('IPC handler failed:', e instanceof Error ? e.message : String(e))
       return handleIPCError(e)
     }
   }
@@ -78,26 +83,6 @@ export function wrapEvent<TArgs extends unknown[], TReturn>(
   }
 }
 
-/** Strip sensitive patterns (API keys, tokens) from error messages */
-export function sanitizeError(message: string): string {
-  return message
-    .replace(/[a-zA-Z]*key[-_][a-zA-Z0-9]{8,}/gi, '***key-***')
-    .replace(/sk-[a-zA-Z0-9]{8,}/gi, '***sk-***')
-    .replace(/Bearer\s+[a-zA-Z0-9_\-]{8,}/gi, 'Bearer ***')
-    .replace(/x-api-key\s*:\s*\S+/gi, 'x-api-key: ***')
-    .replace(/[a-f0-9]{32,}/gi, '***hex***')
-}
-
-/** Common error handling for IPC wrappers */
-function handleIPCError<T>(e: unknown): T {
-  const original = e instanceof Error ? e : new Error(String(e))
-  const message = sanitizeError(original.message)
-  const sanitized = new Error(message)
-  sanitized.name = original.name
-  logger.error('IPC:', sanitized)
-  throw sanitized
-}
-
 // ===== Register all IPC handlers =====
 
 import { registerProjectHandlers } from './project.ipc'
@@ -114,11 +99,26 @@ import { registerExportHandlers } from './export.ipc'
 import { registerDbHandlers } from './db.ipc'
 import { registerStorageHandlers } from './storage.ipc'
 import { registerMonitorHandlers } from './monitor.ipc'
+import { registerImportHandlers } from './import.ipc'
+import { registerRepairHandlers } from './repair.ipc'
 
 export function registerIpcHandlers(ipcMain: IpcMain, services: ServiceRegistry): void {
+  // 为主应用窗口显式授予完整权限。默认权限已收缩为 read，此处显式授权可防止
+  // 新窗口/新上下文意外获得写/管理权限。未来应按窗口类型拆分权限集。
+  permissionManager.setPermissions(['read', 'write', 'admin'])
+
   const guardedIpcMain: IpcMain = Object.create(ipcMain)
   guardedIpcMain.handle = (channel: string, handler: (event: IpcMainInvokeEvent, ...args: unknown[]) => unknown) => {
-    ipcMain.handle(channel, withPermission(channel, handler))
+    // 注入 channel 名称，用于错误日志中的上下文定位
+    const wrappedHandler = async (event: IpcMainInvokeEvent, ...args: unknown[]): Promise<unknown> => {
+      try {
+        return await handler(event, ...args)
+      } catch (e) {
+        logger.error(`IPC [${channel}] failed:`, e instanceof Error ? e.message : String(e))
+        throw e
+      }
+    }
+    ipcMain.handle(channel, withPermission(channel, wrappedHandler))
   }
 
   registerProjectHandlers(guardedIpcMain, services)
@@ -135,4 +135,6 @@ export function registerIpcHandlers(ipcMain: IpcMain, services: ServiceRegistry)
   registerDbHandlers(guardedIpcMain, services)
   registerStorageHandlers(guardedIpcMain, services)
   registerMonitorHandlers(guardedIpcMain, services)
+  registerImportHandlers(guardedIpcMain)
+  registerRepairHandlers(guardedIpcMain, services)
 }

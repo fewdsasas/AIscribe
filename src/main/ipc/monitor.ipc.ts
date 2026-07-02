@@ -54,4 +54,12 @@ export function registerMonitorHandlers(ipcMain: IpcMain, _services: ServiceRegi
       )
     }
   }, MONITOR_INTERVAL_MS)
+
+  // 应用退出时清理定时器
+  app.on('before-quit', () => {
+    if (monitorTimer) {
+      clearInterval(monitorTimer)
+      monitorTimer = null
+    }
+  })
 }

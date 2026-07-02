@@ -69,7 +69,7 @@ describe('wrap payload size warning', () => {
     const wrapped = wrap((arg: string) => arg)
     const largeArg = 'x'.repeat(1024 * 1024 + 100)
     await wrapped({} as any, largeArg)
-    expect(logger.warn).toHaveBeenCalledWith(expect.stringMatching(/\[IPC\] Large payload on channel: \d+ bytes/))
+    expect(logger.warn).toHaveBeenCalledWith(expect.stringMatching(/\[IPC\] Large payload: \d+ bytes/))
   })
 
   it('should not warn for small payloads', async () => {
@@ -99,7 +99,7 @@ describe('handleIPCError (via wrap)', () => {
     expect(logger.error).toHaveBeenCalled()
   })
 
-  it('should preserve the original error name', async () => {
+  it('should convert errors to structured IPCError with code', async () => {
     class CustomError extends Error {
       name = 'CustomError'
     }
@@ -109,8 +109,11 @@ describe('handleIPCError (via wrap)', () => {
     try {
       await wrapped({} as any)
     } catch (e) {
-      expect((e as Error).name).toBe('CustomError')
+      // 结构化错误，名称格式为 IPCError[code]
+      expect((e as Error).name).toMatch(/^IPCError\[/)
       expect((e as Error).message).toBe('custom error')
+      // 原始错误名称保存在 details.originalName
+      expect((e as any).details?.originalName).toBe('CustomError')
     }
   })
 

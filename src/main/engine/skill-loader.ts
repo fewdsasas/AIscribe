@@ -196,7 +196,7 @@ export class SkillLoader {
     if (name.includes('workflow') || name.includes('流程')) return 'planning'
     if (name.includes('market') || name.includes('市场') || name.includes('radar')) return 'market'
     if (name.includes('analyzer') || name.includes('分析') || name.includes('拆')) return 'analysis'
-    if (name.includes('rewrite') || name.includes('ai') || name.includes('改写')) return 'revision'
+    if (name.includes('rewrite') || name.includes('改写') || /\bai\b/i.test(name)) return 'revision'
     if (name.includes('polish') || name.includes('revision') || name.includes('修改')) return 'revision'
     return 'writing'
   }
@@ -229,6 +229,15 @@ export class SkillLoader {
    * Execute a skill by name, using LLM to process the user's request
    * with the skill's documentation as context.
    */
+  /**
+   * Strip YAML frontmatter from raw markdown content.
+   * Returns the body text without the leading `--- ... ---` block.
+   */
+  private stripFrontmatter(rawContent: string): string {
+    const match = rawContent.match(/^---[\s\S]*?---\n?([\s\S]*)$/)
+    return match ? match[1].trimStart() : rawContent
+  }
+
   async executeSkill(name: string, input: SkillInput): Promise<SkillResult> {
     const skill = this.getSkill(name)
     if (!skill) {
@@ -236,11 +245,12 @@ export class SkillLoader {
     }
 
     try {
+      const bodyContent = this.stripFrontmatter(skill.rawContent)
       const response = await this.llmProvider.chat({
         messages: [{ role: 'user', content: input.prompt }],
         system: `你是一个专业的中国网文创作助手。请使用以下技能文档来指导你的回复：
 
-${skill.rawContent}
+${bodyContent}
 
 请根据上述技能提供专业、详细的创作建议。回复使用中文。`
       })

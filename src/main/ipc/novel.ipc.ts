@@ -6,6 +6,7 @@ import {
   requireEnum,
   requireId,
   requireNonEmptyString,
+  requireNonNegativeNumber,
   requireObject,
   wrap,
   wrapEvent
@@ -23,12 +24,14 @@ import type {
   GetByProjectIdData,
   ImportNovelData,
   ImportNovelResult,
+  ListChaptersPaginatedData,
   OperationResult,
   UpdateByIdData,
   UpdateChapterData
 } from '../../shared/types/ipc'
 import { createDefaultNovelParser } from '../import/novel-parser'
-import { aiStructureRepair, analyseConfidence } from '../import/ai-structure-repair'
+import { analyseConfidence } from '../import/ai-structure-repair'
+import { executeRepairWithWriteBack } from './repair-utils'
 
 export function registerNovelHandlers(ipcMain: IpcMain, services: ServiceRegistry): void {
   ipcMain.handle(
@@ -98,6 +101,26 @@ export function registerNovelHandlers(ipcMain: IpcMain, services: ServiceRegistr
       }
       const d = await services.resolveAsync<IDatabase>(DATABASE_TOKEN)
       return d.getChapterCounts(data.novelIds)
+    })
+  )
+  ipcMain.handle(
+    'chapter:list-paginated',
+    wrap(async (data: ListChaptersPaginatedData) => {
+      requireObject(data, '查询数据')
+      requireId(data.novelId, '小说ID')
+      requireNonNegativeNumber(data.offset, 'offset')
+      requireNonNegativeNumber(data.limit, 'limit')
+      const d = await services.resolveAsync<IDatabase>(DATABASE_TOKEN)
+      return d.listChaptersPaginated(data.novelId, data.offset, data.limit)
+    })
+  )
+  ipcMain.handle(
+    'chapter:count',
+    wrap(async (data: GetByNovelIdData) => {
+      requireObject(data, '查询数据')
+      requireId(data.novelId, '小说ID')
+      const d = await services.resolveAsync<IDatabase>(DATABASE_TOKEN)
+      return d.countChapters(data.novelId)
     })
   )
   ipcMain.handle(
@@ -183,63 +206,44 @@ export function registerNovelHandlers(ipcMain: IpcMain, services: ServiceRegistr
         if (confidence.level === 'low') {
           // 异步后台修复，不阻塞返回
           setTimeout(async () => {
+            // 生命周期保护：检查 sender 是否已销毁
+            if (sender.isDestroyed()) return
+
+            const safeSend = (channel: string, data: unknown) => {
+              if (!sender.isDestroyed()) {
+                try {
+                  sender.send(channel, data)
+                } catch {
+                  // sender may be destroyed between check and send
+                }
+              }
+            }
+
             try {
               const llm = await services.resolveAsync<ILLMProvider>(LLM_PROVIDER_TOKEN)
 
-              sender.send('import:repair-progress', {
+              safeSend('import:repair-progress', {
                 novelId: novel.id,
                 current: 0,
                 total: parsed.chapters.length,
                 action: 'AI 结构修复已自动启动...'
               })
 
-              const result = await aiStructureRepair(parsed, {
-                llm,
-                force: true,
+              const result = await executeRepairWithWriteBack(d, llm, novel.id, parsed, {
                 onProgress: (current, total, action) => {
-                  sender.send('import:repair-progress', { novelId: novel.id, current, total, action })
+                  safeSend('import:repair-progress', { novelId: novel.id, current, total, action })
                 }
               })
 
-              if (result.applied) {
-                const existingChapters = d.listChaptersWithContent(novel.id)
-                for (let i = 0; i < result.novel.chapters.length; i++) {
-                  const repairedCh = result.novel.chapters[i]
-                  if (i < existingChapters.length) {
-                    d.updateChapter(existingChapters[i].id, {
-                      title: repairedCh.title,
-                      content: repairedCh.content,
-                      wordCount: repairedCh.wordCount
-                    })
-                  } else {
-                    d.createChapter({
-                      novelId: novel.id,
-                      title: repairedCh.title,
-                      content: repairedCh.content,
-                      sortOrder: i,
-                      wordCount: repairedCh.wordCount,
-                      status: 'draft',
-                      notes: undefined
-                    })
-                  }
-                }
-                // 合并场景：标记多余章节
-                if (result.novel.chapters.length < existingChapters.length) {
-                  for (let i = result.novel.chapters.length; i < existingChapters.length; i++) {
-                    d.updateChapter(existingChapters[i].id, { title: '(已合并)', content: '', wordCount: 0 })
-                  }
-                }
-              }
-
-              sender.send('import:repair-done', {
+              safeSend('import:repair-done', {
                 novelId: novel.id,
                 actionsCount: result.actions.filter(a => a.type !== 'no_change').length
               })
             } catch (repairErr) {
               // 异步修复失败不阻塞整体导入，静默降级
               logger.warn('Background AI structure repair failed:', repairErr)
-              sender.send('import:repair-done', { novelId: novel.id, actionsCount: 0 })
-              sender.send('import:repair-error', {
+              safeSend('import:repair-done', { novelId: novel.id, actionsCount: 0 })
+              safeSend('import:repair-error', {
                 novelId: novel.id,
                 message: `AI 结构修复失败: ${(repairErr as Error).message ?? '未知错误'}`
               })

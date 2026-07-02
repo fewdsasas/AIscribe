@@ -2,11 +2,13 @@ import type { LLMConfig, LLMProvider as LLMProviderType, LLMRequest, LLMResponse
 import { SecureLLMConfig } from '../secure-config'
 import { DEFAULT_ENDPOINTS, LLM_STREAM_TIMEOUT_MS } from '../../shared/constants'
 import { validateEndpoint } from './url-validator'
+import { LLMRequestQueue } from './llm-request-queue'
 
 const MAX_STREAM_BUFFER_SIZE = 1024 * 1024
 const TEST_CONNECTION_TIMEOUT_MS = 15_000
 const FIRST_BYTE_TIMEOUT_MS = 30_000
 const BACKPRESSURE_CHUNK_BYTES = 16 * 1024
+const MAX_STREAM_CONCURRENCY = 3
 
 // ===== Type Guards =====
 
@@ -226,6 +228,8 @@ export class LLMProvider {
   private configs: Partial<Record<LLMProviderType, ProviderConfig>> = {}
   private defaultProvider: LLMProviderType = 'openai'
   private activeControllers: Map<string, AbortController> = new Map()
+  private requestQueue = new LLMRequestQueue({ maxConcurrency: 2, maxRetries: 2, baseDelayMs: 500 })
+  private activeStreams = 0
 
   resetConfig(): void {
     this.configs = {}
@@ -358,7 +362,7 @@ export class LLMProvider {
       ? [{ role: 'system' as const, content: request.system }, ...request.messages]
       : request.messages
 
-    return this.executeChatRequest(targetProvider, config, messages)
+    return this.requestQueue.enqueue(() => this.executeChatRequest(targetProvider, config, messages))
   }
 
   async testConnection(config: LLMConfig): Promise<boolean> {
@@ -374,7 +378,9 @@ export class LLMProvider {
           : undefined
     }
     const messages = [{ role: 'user' as const, content: 'Hello' }]
-    await this.executeChatRequest(config.provider, providerConfig, messages, TEST_CONNECTION_TIMEOUT_MS)
+    await this.requestQueue.enqueue(() =>
+      this.executeChatRequest(config.provider, providerConfig, messages, TEST_CONNECTION_TIMEOUT_MS)
+    )
     return true
   }
 
@@ -394,6 +400,15 @@ export class LLMProvider {
       callbacks.onError('No LLM provider configured')
       return
     }
+
+    // 并发控制：限制同时进行的流式请求数量
+    if (this.activeStreams >= MAX_STREAM_CONCURRENCY) {
+      callbacks.onError(
+        `Too many concurrent streams (max ${MAX_STREAM_CONCURRENCY}). Please wait for active streams to finish.`
+      )
+      return
+    }
+    this.activeStreams++
 
     const strategy = this.getStrategy(targetProvider, config)
     const endpoint = strategy.getEndpoint(config)
@@ -431,6 +446,7 @@ export class LLMProvider {
     const cleanup = (cancelReader = false) => {
       if (streamFinished) return
       streamFinished = true
+      this.activeStreams = Math.max(0, this.activeStreams - 1)
       if (totalTimeoutId) clearTimeout(totalTimeoutId)
       if (firstByteTimeoutId) clearTimeout(firstByteTimeoutId)
       if (requestId) this.activeControllers.delete(requestId)
