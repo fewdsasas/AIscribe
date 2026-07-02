@@ -2,7 +2,13 @@ import type { IpcMain } from 'electron'
 import { DATABASE_TOKEN, requireId, requireNonEmptyString, requireObject, wrap } from './index'
 import type { ServiceRegistry } from '../di'
 import type { IDatabase } from '../di'
-import type { CreateCheckpointData, CreateSessionData } from '../../shared/types/ipc'
+import type {
+  CheckpointListData,
+  CheckpointRestoreData,
+  CreateCheckpointData,
+  CreateSessionData,
+  SessionListData
+} from '../../shared/types/ipc'
 
 export function registerCheckpointHandlers(ipcMain: IpcMain, services: ServiceRegistry): void {
   ipcMain.handle(
@@ -17,18 +23,20 @@ export function registerCheckpointHandlers(ipcMain: IpcMain, services: ServiceRe
   )
   ipcMain.handle(
     'checkpoint:list',
-    wrap(async (projectId: string) => {
-      requireId(projectId, '项目ID')
+    wrap(async (data: CheckpointListData) => {
+      requireObject(data, '查询数据')
+      requireId(data.projectId, '项目ID')
       const d = await services.resolveAsync<IDatabase>(DATABASE_TOKEN)
-      return d.listCheckpoints(projectId)
+      return d.listCheckpoints(data.projectId)
     })
   )
   ipcMain.handle(
     'checkpoint:restore',
-    wrap(async (id: string) => {
-      requireId(id, '检查点ID')
+    wrap(async (data: CheckpointRestoreData) => {
+      requireObject(data, '恢复数据')
+      requireId(data.id, '检查点ID')
       const d = await services.resolveAsync<IDatabase>(DATABASE_TOKEN)
-      return d.getCheckpointSnapshot(id)
+      return d.getCheckpointSnapshot(data.id)
     })
   )
 
@@ -44,10 +52,11 @@ export function registerCheckpointHandlers(ipcMain: IpcMain, services: ServiceRe
   )
   ipcMain.handle(
     'session:list',
-    wrap(async (projectId: string) => {
-      requireId(projectId, '项目ID')
+    wrap(async (data: SessionListData) => {
+      requireObject(data, '查询数据')
+      requireId(data.projectId, '项目ID')
       const d = await services.resolveAsync<IDatabase>(DATABASE_TOKEN)
-      return d.listSessionMemories(projectId)
+      return d.listSessionMemories(data.projectId)
     })
   )
 }

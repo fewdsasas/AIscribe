@@ -1,19 +1,30 @@
 import type { Database as SqlJsDatabase } from 'sql.js'
-import { LRUCache } from '../lru-cache'
+import { LRUCache, type LRUCacheOptions } from '../lru-cache'
 import type { OperationLog } from '../operation-log'
 
 export abstract class BaseRepository {
   protected abstract get db(): SqlJsDatabase
 
   /**
-   * 查询结果缓存。子类按约定 key 存取（如 `byId:${id}`），
+   * 查询结果缓存配置。子类可覆盖以适配数据体积与访问模式。
    * 写操作后应调用 clearCache() 失效，避免脏读。
    */
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  protected cache: LRUCache<string, any> = new LRUCache<string, any>(100, 60_000)
+  protected readonly cacheOptions: LRUCacheOptions<any> = { max: 100, ttl: 60_000 }
+
+  /**
+   * 查询结果缓存。子类按约定 key 存取（如 `byId:${id}`）。
+   */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  protected cache: LRUCache<string, any>
 
   private _operationLog: OperationLog | null = null
   private _saveCallback: (() => void) | null = null
+
+  constructor() {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    this.cache = new LRUCache<string, any>(100, this.cacheOptions)
+  }
 
   setOperationLog(log: OperationLog): void {
     this._operationLog = log

@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { exportService } from '../../services'
+import { exportService } from '@renderer/services'
 import Skeleton from '../shared/Skeleton'
 
 interface ExportDialogProps {

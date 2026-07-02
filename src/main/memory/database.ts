@@ -5,6 +5,7 @@ import path from 'path'
 import { logger } from '../utils/logger'
 import type {
   Chapter,
+  ChapterListPage,
   ChapterSummary,
   Character,
   Checkpoint,
@@ -45,6 +46,7 @@ import type {
   IWriterModelRepository
 } from './repositories/repository-interfaces'
 import { OperationLog } from './operation-log'
+import { WriteQueue } from './write-queue'
 
 const SCHEMA_VERSION = 3
 
@@ -167,7 +169,8 @@ export class Database implements IDatabase {
   private dbPath: string
   private initialized = false
   private operationLog: OperationLog | null = null
-  private saveTimeout: ReturnType<typeof setTimeout> | null = null
+  private writeQueue: WriteQueue
+  private savePending = false
 
   // Repositories (initialized lazily)
   private _projectRepo: IProjectRepository | null = null
@@ -184,6 +187,7 @@ export class Database implements IDatabase {
 
   private constructor(dbPath: string) {
     this.dbPath = dbPath
+    this.writeQueue = new WriteQueue({ flushInterval: 300, maxBatchSize: 100 })
   }
 
   /** Access the raw sql.js database instance (for direct queries) */
@@ -203,6 +207,21 @@ export class Database implements IDatabase {
       repo.setSaveCallback(() => this.scheduleSave())
     }
     return repo
+  }
+
+  /** Enqueue a save so that multiple rapid writes result in a single disk flush. */
+  scheduleSave(): void {
+    if (this.savePending) return
+    this.savePending = true
+    this.writeQueue.enqueue(() => {
+      this.savePending = false
+      this.save()
+    })
+  }
+
+  /** Force all pending writes (including queued saves) to complete. */
+  flushWrites(): void {
+    this.writeQueue.flush()
   }
 
   /** Lazy-initialized repositories */
@@ -388,32 +407,19 @@ export class Database implements IDatabase {
     }
   }
 
-  /** Schedule a debounced save (unifies Legacy CRUD with Repository debounce) */
-  scheduleSave(): void {
-    if (this.saveTimeout) clearTimeout(this.saveTimeout)
-    this.saveTimeout = setTimeout(() => {
-      this.saveTimeout = null
-      try {
-        this.save()
-      } catch (e) {
-        logger.error('Database scheduled save failed:', e)
-      }
-    }, 300)
-  }
-
   close(): void {
     if (this.initialized && this._db) {
-      if (this.saveTimeout) {
-        clearTimeout(this.saveTimeout)
-        this.saveTimeout = null
-      }
       try {
-        this.save()
+        this.writeQueue.close()
       } catch (e) {
-        logger.error('Database flush failed on close:', e)
+        logger.error('Database write queue flush failed on close:', e)
       }
       this.operationLog?.stopAutoFlush()
-      this.operationLog?.flush()
+      try {
+        this.operationLog?.flush()
+      } catch (e) {
+        logger.error('Database operation log flush failed on close:', e)
+      }
       this._db.close()
       this._db = null
     }
@@ -517,6 +523,14 @@ export class Database implements IDatabase {
 
   listChapters(novelId: string): ChapterSummary[] {
     return this.chapters.listByNovel(novelId)
+  }
+
+  listChaptersPaginated(novelId: string, offset: number, limit: number): ChapterListPage {
+    return this.chapters.listByNovelPaginated(novelId, offset, limit)
+  }
+
+  countChapters(novelId: string): number {
+    return this.chapters.countByNovel(novelId)
   }
 
   /** 完整章节列表（含 content），供阅读器/导出等需要正文内容的场景使用 */

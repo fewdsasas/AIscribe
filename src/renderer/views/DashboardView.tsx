@@ -3,11 +3,12 @@ import { ProjectCard } from '../components/project/ProjectCard'
 import { ProjectDialog } from '../components/project/ProjectDialog'
 import { ProjectSettings } from '../components/project/ProjectSettings'
 import { ExportDialog } from '../components/project/ExportDialog'
+import { ImportNovelDialog } from '../components/project/ImportNovelDialog'
 import { ConfirmDialog } from '../components/shared/ConfirmDialog'
 import { useToast } from '../components/shared/Toast'
 import { logger } from '../utils/logger'
 import { projectService } from '../services/projectService'
-import type { Project } from '../../shared/types'
+import type { Project } from '@shared/types'
 
 interface DashboardViewProps {
   onSelectProject: (id: string) => void
@@ -27,6 +28,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onSelectProject })
   const [projects, setProjects] = useState<Project[]>([])
   const [loading, setLoading] = useState(true)
   const [showDialog, setShowDialog] = useState(false)
+  const [showImportDialog, setShowImportDialog] = useState(false)
   const [settingsProjectId, setSettingsProjectId] = useState<string | null>(null)
   const [exportProjectId, setExportProjectId] = useState<string | null>(null)
   const [exportProjectName, setExportProjectName] = useState('')
@@ -125,12 +127,21 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onSelectProject })
             管理和创作你的小说作品
           </p>
         </div>
-        <button
-          onClick={() => setShowDialog(true)}
-          className="px-4 py-2 bg-[--color-primary] text-white rounded-lg text-sm font-medium hover:bg-[--color-primary-hover] transition-colors"
-        >
-          + 新建项目
-        </button>
+        <div className="flex gap-2">
+          <button
+            onClick={() => setShowImportDialog(true)}
+            className="px-4 py-2 border rounded-lg text-sm font-medium transition-colors"
+            style={{ borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
+          >
+            📥 导入小说
+          </button>
+          <button
+            onClick={() => setShowDialog(true)}
+            className="px-4 py-2 bg-[--color-primary] text-white rounded-lg text-sm font-medium hover:bg-[--color-primary-hover] transition-colors"
+          >
+            + 新建项目
+          </button>
+        </div>
       </div>
 
       {/* Writing stats — C3: p-5, C4: 30px 楷书 */}
@@ -285,6 +296,18 @@ export const DashboardView: React.FC<DashboardViewProps> = ({ onSelectProject })
 
       {/* Create dialog */}
       <ProjectDialog open={showDialog} onClose={() => setShowDialog(false)} onCreated={handleCreated} />
+
+      {/* Import novel dialog */}
+      <ImportNovelDialog
+        open={showImportDialog}
+        onClose={() => setShowImportDialog(false)}
+        onImported={projectId => {
+          setShowImportDialog(false)
+          loadProjects()
+          onSelectProject(projectId)
+          showToast('小说导入成功', 'success')
+        }}
+      />
 
       {/* Settings dialog */}
       {settingsProjectId && (

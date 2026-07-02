@@ -27,6 +27,9 @@ export const DEFAULT_ENDPOINTS: Record<string, string> = {
   tongyi: 'https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation'
 }
 
+/** Maximum file size for novel import (50MB) */
+export const MAX_IMPORT_FILE_SIZE_BYTES = 50 * 1024 * 1024
+
 export const DEFAULT_MODELS: Record<string, string> = {
   openai: 'gpt-4o',
   claude: 'claude-sonnet-4-20250514',

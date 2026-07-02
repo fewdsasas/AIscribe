@@ -197,37 +197,37 @@ describe('IPC handler dependency injection', () => {
       name: 'project',
       register: registerProjectHandlers,
       expectedTokens: [DATABASE_TOKEN],
-      invoke: { channel: 'project:get', args: [VALID_UUID] }
+      invoke: { channel: 'project:get', args: [{ id: VALID_UUID }] }
     },
     {
       name: 'novel',
       register: registerNovelHandlers,
       expectedTokens: [DATABASE_TOKEN],
-      invoke: { channel: 'novel:get', args: [VALID_UUID] }
+      invoke: { channel: 'novel:get', args: [{ id: VALID_UUID }] }
     },
     {
       name: 'character',
       register: registerCharacterHandlers,
       expectedTokens: [DATABASE_TOKEN],
-      invoke: { channel: 'character:list', args: [VALID_UUID] }
+      invoke: { channel: 'character:list', args: [{ novelId: VALID_UUID }] }
     },
     {
       name: 'world',
       register: registerWorldHandlers,
       expectedTokens: [DATABASE_TOKEN],
-      invoke: { channel: 'world:get-by-novel', args: [VALID_UUID] }
+      invoke: { channel: 'world:get-by-novel', args: [{ novelId: VALID_UUID }] }
     },
     {
       name: 'checkpoint',
       register: registerCheckpointHandlers,
       expectedTokens: [DATABASE_TOKEN],
-      invoke: { channel: 'checkpoint:list', args: [VALID_UUID] }
+      invoke: { channel: 'checkpoint:list', args: [{ projectId: VALID_UUID }] }
     },
     {
       name: 'writer',
       register: registerWriterHandlers,
       expectedTokens: [DATABASE_TOKEN],
-      invoke: { channel: 'writer-model:get', args: [VALID_UUID] }
+      invoke: { channel: 'writerModel:get', args: [{ writerId: VALID_UUID }] }
     },
     {
       name: 'skill',
@@ -250,7 +250,7 @@ describe('IPC handler dependency injection', () => {
       name: 'learning',
       register: registerLearningHandlers,
       expectedTokens: [LEARNING_ENGINE_TOKEN],
-      invoke: { channel: 'learning:summary', args: [VALID_UUID] }
+      invoke: { channel: 'learning:summary', args: [{ projectId: VALID_UUID }] }
     },
     {
       name: 'db',

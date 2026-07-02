@@ -128,7 +128,7 @@ describe('IPC Stress Tests', () => {
     }
 
     // listChapters should reflect all 50
-    const list = await listHandler(null, novel.id)
+    const list = await listHandler(null, { novelId: novel.id })
     expect(Array.isArray(list)).toBe(true)
     expect(list.length).toBe(50)
 
@@ -285,15 +285,15 @@ describe('IPC Stress Tests', () => {
 
     // 10 listChapters (summary)
     for (let i = 0; i < 10; i++) {
-      tasks.push(listHandler(null, novel.id))
+      tasks.push(listHandler(null, { novelId: novel.id }))
     }
     // 10 getChapter (full)
     for (let i = 0; i < 10; i++) {
-      tasks.push(getHandler(null, chapterIds[i]))
+      tasks.push(getHandler(null, { id: chapterIds[i] }))
     }
     // 10 updateChapter
     for (let i = 0; i < 10; i++) {
-      tasks.push(updateHandler(null, chapterIds[10 + i], { title: `S4 已更新-${i}` }))
+      tasks.push(updateHandler(null, { id: chapterIds[10 + i], updates: { title: `S4 已更新-${i}` } }))
     }
     // 10 createChapter
     for (let i = 0; i < 10; i++) {
@@ -301,7 +301,7 @@ describe('IPC Stress Tests', () => {
     }
     // 10 chapterCounts
     for (let i = 0; i < 10; i++) {
-      tasks.push(countsHandler(null, [novel.id]))
+      tasks.push(countsHandler(null, { novelIds: [novel.id] }))
     }
 
     const results = await Promise.all(tasks)
@@ -328,9 +328,9 @@ describe('IPC Stress Tests', () => {
       expect(gets[i].content).toContain(`内容-${i}`)
     }
 
-    // updateChapter results (next 10): true
-    const updates = results.slice(20, 30) as boolean[]
-    for (const u of updates) expect(u).toBe(true)
+    // updateChapter results (next 10): OperationResult
+    const updates = results.slice(20, 30) as { success: boolean }[]
+    for (const u of updates) expect(u.success).toBe(true)
 
     // createChapter results (next 10): new chapter objects
     const creates = results.slice(30, 40) as { id: string }[]
@@ -343,12 +343,12 @@ describe('IPC Stress Tests', () => {
     }
 
     // Final consistent state: 50 initial + 10 new = 60, no dirty reads
-    const finalList = await listHandler(null, novel.id)
+    const finalList = await listHandler(null, { novelId: novel.id })
     expect(finalList.length).toBe(60)
 
     // The 10 updated chapters must reflect their new titles
     for (let i = 0; i < 10; i++) {
-      const updated = await getHandler(null, chapterIds[10 + i])
+      const updated = await getHandler(null, { id: chapterIds[10 + i] })
       expect(updated.title).toBe(`S4 已更新-${i}`)
     }
 

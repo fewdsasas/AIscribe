@@ -115,14 +115,14 @@ describe('Character IPC Handlers', () => {
 
       await db.createCharacter({ novelId: novel.id, name: 'Villain' })
 
-      const result = await handler(null, novel.id)
+      const result = await handler(null, { novelId: novel.id })
       expect(Array.isArray(result)).toBe(true)
       expect(result.length).toBeGreaterThan(0)
     })
 
     it('should reject invalid novel ID', async () => {
       const handler = getRegisteredHandler('character:list')
-      await expect(handler(null, 'invalid')).rejects.toThrow('小说ID 格式无效')
+      await expect(handler(null, { novelId: 'invalid' })).rejects.toThrow('小说ID 格式无效')
     })
   })
 })

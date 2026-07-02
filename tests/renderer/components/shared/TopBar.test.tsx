@@ -27,11 +27,11 @@ describe('TopBar', () => {
     const onNavigate = vi.fn()
     render(<TopBar currentView="editor" onNavigate={onNavigate} />)
     fireEvent.click(screen.getByTitle('AI 对话'))
-    expect(onNavigate).toHaveBeenCalledWith('ai-chat')
+    expect(onNavigate).toHaveBeenCalledWith('aiChat')
   })
 
   it('should hide chat button when on ai-chat view', () => {
-    render(<TopBar currentView="ai-chat" />)
+    render(<TopBar currentView="aiChat" />)
     expect(screen.queryByTitle('AI 对话')).not.toBeInTheDocument()
   })
 

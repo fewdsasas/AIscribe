@@ -1,11 +1,29 @@
 import type { Database as SqlJsDatabase } from 'sql.js'
 import { v4 as uuid } from 'uuid'
-import type { Chapter, ChapterSummary } from '../../../shared/types'
+import type { Chapter, ChapterListPage, ChapterSummary } from '../../../shared/types'
 import { BaseRepository } from './base-repository'
 import { asNumber, asOptionalString, asString, buildRowMap, now } from './row-mapper'
 import type { IChapterRepository } from './repository-interfaces'
 
+const CHAPTER_CONTENT_CACHE_MAX_BYTES = 1024 * 1024 // 1MB
+
+function estimateChapterSize(chapter: Chapter | ChapterSummary | ChapterListPage): number {
+  if ('items' in chapter) {
+    return chapter.items.reduce((sum, item) => sum + estimateChapterSize(item), 0)
+  }
+  const contentSize = 'content' in chapter && typeof chapter.content === 'string' ? chapter.content.length * 2 : 0
+  const titleSize = chapter.title.length * 2
+  return contentSize + titleSize + 256
+}
+
 export class ChapterRepository extends BaseRepository implements IChapterRepository {
+  protected readonly cacheOptions = {
+    max: 50,
+    ttl: 60_000,
+    sizeOf: estimateChapterSize,
+    maxSize: 20 * 1024 * 1024 // 20MB
+  }
+
   constructor(private sqlDb: SqlJsDatabase) {
     super()
   }
@@ -69,6 +87,37 @@ export class ChapterRepository extends BaseRepository implements IChapterReposit
   }
 
   /**
+   * 分页列表：按 sort_order 排序，返回指定区间精简字段与总数。
+   */
+  listByNovelPaginated(novelId: string, offset: number, limit: number): ChapterListPage {
+    const safeOffset = Math.max(0, offset)
+    const safeLimit = Math.max(1, limit)
+    const cacheKey = `byNovel:${novelId}:offset:${safeOffset}:limit:${safeLimit}`
+    const cached = this.cache.get(cacheKey) as ChapterListPage | undefined
+    if (cached) return cached
+
+    const result = this.sqlDb.exec(
+      `SELECT id, novel_id, title, sort_order, word_count, status, created_at, updated_at, notes
+       FROM chapters WHERE novel_id = ? ORDER BY sort_order ASC LIMIT ? OFFSET ?`,
+      [novelId, safeLimit, safeOffset]
+    )
+    const items =
+      result.length === 0 || result[0].values.length === 0
+        ? []
+        : result[0].values.map(row => this.rowToChapterSummary(row, result[0].columns))
+    const total = this.countByNovel(novelId)
+    const page: ChapterListPage = { items, total, offset: safeOffset, limit: safeLimit }
+    this.cache.set(cacheKey, page)
+    return page
+  }
+
+  countByNovel(novelId: string): number {
+    const result = this.sqlDb.exec('SELECT COUNT(*) as cnt FROM chapters WHERE novel_id = ?', [novelId])
+    if (result.length === 0 || result[0].values.length === 0) return 0
+    return Number(result[0].values[0][0])
+  }
+
+  /**
    * 完整章节列表（含 content），供阅读器/导出等需要正文内容的场景使用。
    */
   listByNovelWithContent(novelId: string): Chapter[] {
@@ -85,7 +134,10 @@ export class ChapterRepository extends BaseRepository implements IChapterReposit
     const result = this.sqlDb.exec('SELECT * FROM chapters WHERE id = ?', [id])
     if (result.length === 0 || result[0].values.length === 0) return null
     const chapter = this.rowToChapter(result[0].values[0], result[0].columns)
-    this.cache.set(cacheKey, chapter)
+    // 超大正文不缓存，避免单个条目挤占缓存内存上限
+    if (chapter.content.length * 2 <= CHAPTER_CONTENT_CACHE_MAX_BYTES) {
+      this.cache.set(cacheKey, chapter)
+    }
     return chapter
   }
 

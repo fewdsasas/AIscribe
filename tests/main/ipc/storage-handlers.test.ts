@@ -64,25 +64,27 @@ describe('Storage IPC Handlers', () => {
   describe('storage:encryptSet', () => {
     it('should encrypt and store a value', async () => {
       const handler = getRegisteredHandler('storage:encryptSet')
-      const result = await handler(null, 'testKey', 'testValue')
+      const result = await handler(null, { key: 'testKey', value: 'testValue' })
 
-      expect(result).toBe(true)
+      expect(result.success).toBe(true)
       expect(SecureConfig.save).toHaveBeenCalled()
     })
 
     it('should reject LLM config keys', async () => {
       const handler = getRegisteredHandler('storage:encryptSet')
-      await expect(handler(null, 'apiKey', 'sk-test123')).rejects.toThrow('不允许通过通用存储设置 LLM 配置')
+      await expect(handler(null, { key: 'apiKey', value: 'sk-test123' })).rejects.toThrow(
+        '不允许通过通用存储设置 LLM 配置'
+      )
     })
 
     it('should reject invalid key names', async () => {
       const handler = getRegisteredHandler('storage:encryptSet')
-      await expect(handler(null, '123invalid', 'test')).rejects.toThrow()
+      await expect(handler(null, { key: '123invalid', value: 'test' })).rejects.toThrow()
     })
 
     it('should reject empty key', async () => {
       const handler = getRegisteredHandler('storage:encryptSet')
-      await expect(handler(null, '', 'test')).rejects.toThrow()
+      await expect(handler(null, { key: '', value: 'test' })).rejects.toThrow()
     })
   })
 
@@ -90,7 +92,7 @@ describe('Storage IPC Handlers', () => {
     it('should retrieve a stored value', async () => {
       mockData = { testKey: 'testValue' }
       const handler = getRegisteredHandler('storage:encryptGet')
-      const result = await handler(null, 'testKey')
+      const result = await handler(null, { key: 'testKey' })
 
       expect(result).toBe('testValue')
     })
@@ -98,7 +100,7 @@ describe('Storage IPC Handlers', () => {
     it('should return null for non-existent key', async () => {
       mockData = {}
       const handler = getRegisteredHandler('storage:encryptGet')
-      const result = await handler(null, 'nonExistent')
+      const result = await handler(null, { key: 'nonExistent' })
 
       expect(result).toBeNull()
     })
@@ -106,14 +108,14 @@ describe('Storage IPC Handlers', () => {
     it('should return null when data is not an object', async () => {
       vi.mocked(SecureConfig.load).mockReturnValueOnce('invalid' as any)
       const handler = getRegisteredHandler('storage:encryptGet')
-      const result = await handler(null, 'testKey')
+      const result = await handler(null, { key: 'testKey' })
 
       expect(result).toBeNull()
     })
 
     it('should reject LLM config keys', async () => {
       const handler = getRegisteredHandler('storage:encryptGet')
-      await expect(handler(null, 'apiKey')).rejects.toThrow('不允许通过通用存储读取 LLM 配置')
+      await expect(handler(null, { key: 'apiKey' })).rejects.toThrow('不允许通过通用存储读取 LLM 配置')
     })
   })
 
@@ -121,23 +123,23 @@ describe('Storage IPC Handlers', () => {
     it('should remove a stored key', async () => {
       mockData = { testKey: 'value', otherKey: 'other' }
       const handler = getRegisteredHandler('storage:encryptRemove')
-      const result = await handler(null, 'testKey')
+      const result = await handler(null, { key: 'testKey' })
 
-      expect(result).toBe(true)
+      expect(result.success).toBe(true)
       expect(SecureConfig.save).toHaveBeenCalled()
     })
 
     it('should handle empty data gracefully', async () => {
       mockData = {}
       const handler = getRegisteredHandler('storage:encryptRemove')
-      const result = await handler(null, 'testKey')
+      const result = await handler(null, { key: 'testKey' })
 
-      expect(result).toBe(true)
+      expect(result.success).toBe(true)
     })
 
     it('should reject LLM config keys', async () => {
       const handler = getRegisteredHandler('storage:encryptRemove')
-      await expect(handler(null, 'apiKey')).rejects.toThrow('不允许通过通用存储删除 LLM 配置')
+      await expect(handler(null, { key: 'apiKey' })).rejects.toThrow('不允许通过通用存储删除 LLM 配置')
     })
   })
 })

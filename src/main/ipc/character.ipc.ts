@@ -2,7 +2,7 @@ import type { IpcMain } from 'electron'
 import { DATABASE_TOKEN, requireEnum, requireId, requireNonEmptyString, requireObject, wrap } from './index'
 import type { ServiceRegistry } from '../di'
 import type { IDatabase } from '../di'
-import type { CreateCharacterData } from '../../shared/types/ipc'
+import type { CreateCharacterData, GetByNovelIdData } from '../../shared/types/ipc'
 
 export function registerCharacterHandlers(ipcMain: IpcMain, services: ServiceRegistry): void {
   ipcMain.handle(
@@ -33,10 +33,11 @@ export function registerCharacterHandlers(ipcMain: IpcMain, services: ServiceReg
   )
   ipcMain.handle(
     'character:list',
-    wrap(async (novelId: string) => {
-      requireId(novelId, '小说ID')
+    wrap(async (data: GetByNovelIdData) => {
+      requireObject(data, '查询数据')
+      requireId(data.novelId, '小说ID')
       const d = await services.resolveAsync<IDatabase>(DATABASE_TOKEN)
-      return d.listCharacters(novelId)
+      return d.listCharacters(data.novelId)
     })
   )
 }

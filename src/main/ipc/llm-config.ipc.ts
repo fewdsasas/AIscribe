@@ -4,13 +4,14 @@ import type { ServiceRegistry } from '../di'
 import type { ILLMProvider } from '../di'
 import { SecureLLMConfig } from '../secure-config'
 import type { LLMConfig } from '../../shared/types'
+import type { LLMTestConnectionResult, OperationResult } from '../../shared/types/ipc'
 
 export function registerLLMConfigHandlers(ipcMain: IpcMain, services: ServiceRegistry): void {
   const llm = services.resolve<ILLMProvider>(LLM_PROVIDER_TOKEN)
 
   ipcMain.handle(
     'llm:config',
-    wrap(async (config: LLMConfig) => {
+    wrap(async (config: LLMConfig): Promise<OperationResult> => {
       requireObject(config, 'LLM 配置')
       requireNonEmptyString(config.provider, '提供商')
       requireNonEmptyString(config.apiKey, 'API密钥')
@@ -21,7 +22,7 @@ export function registerLLMConfigHandlers(ipcMain: IpcMain, services: ServiceReg
       }
       llm.configure(config)
       SecureLLMConfig.save(config as unknown as Record<string, unknown>)
-      return true
+      return { success: true }
     })
   )
 
@@ -48,7 +49,7 @@ export function registerLLMConfigHandlers(ipcMain: IpcMain, services: ServiceReg
 
   ipcMain.handle(
     'llm:test-connection',
-    wrap(async (config: LLMConfig) => {
+    wrap(async (config: LLMConfig): Promise<LLMTestConnectionResult> => {
       requireObject(config, 'LLM 配置')
       requireNonEmptyString(config.provider, '提供商')
       requireNonEmptyString(config.apiKey, 'API密钥')
@@ -57,7 +58,8 @@ export function registerLLMConfigHandlers(ipcMain: IpcMain, services: ServiceReg
       if (config.customProtocol) {
         requireEnum(config.customProtocol, ['openai', 'anthropic'], '自定义协议')
       }
-      return llm.testConnection(config)
+      const connected = await llm.testConnection(config)
+      return { success: true, connected }
     })
   )
 }

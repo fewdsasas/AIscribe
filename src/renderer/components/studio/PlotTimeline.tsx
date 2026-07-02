@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react'
-import type { PlotBeat } from '../../../shared/types'
+import type { PlotBeat } from '@shared/types'
 
 interface PlotTimelineProps {
   beats: PlotBeat[]

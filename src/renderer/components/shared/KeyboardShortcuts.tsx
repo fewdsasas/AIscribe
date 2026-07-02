@@ -58,7 +58,7 @@ export const KeyboardShortcutHandler: React.FC<{
       }
       if (ctrl && e.key === '5') {
         e.preventDefault()
-        onNavigate?.('ai-chat')
+        onNavigate?.('aiChat')
         return
       }
       if (ctrl && e.key === '6') {

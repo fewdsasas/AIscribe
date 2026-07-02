@@ -3,7 +3,7 @@ import { join } from 'path'
 import { electronApp, is, optimizer } from '@electron-toolkit/utils'
 import { registerIpcHandlers } from './ipc'
 import { createDefaultServiceRegistry, type ServiceRegistry } from './di'
-import { logger } from './utils/logger'
+import { initLogger, logger } from './utils/logger'
 import { DEFAULT_ENDPOINTS } from '../shared/constants'
 
 let mainWindow: BrowserWindow | null = null
@@ -124,6 +124,7 @@ function createWindow(): void {
 app
   .whenReady()
   .then(async () => {
+    initLogger(app.getPath('userData'))
     electronApp.setAppUserModelId('com.aiscribe.app')
 
     app.on('browser-window-created', (_, window) => {

@@ -2,19 +2,27 @@ import type { IpcMain } from 'electron'
 import { DATABASE_TOKEN, requireEnum, requireId, requireNonEmptyString, requireObject, wrap } from './index'
 import type { ServiceRegistry } from '../di'
 import type { IDatabase } from '../di'
-import type { SaveOutlineData, SavePlotStructureData, SaveWorldData } from '../../shared/types/ipc'
+import type {
+  OutlineGetData,
+  PlotStructureGetData,
+  SaveOutlineData,
+  SavePlotStructureData,
+  SaveWorldData,
+  WorldGetData
+} from '../../shared/types/ipc'
 
 export function registerWorldHandlers(ipcMain: IpcMain, services: ServiceRegistry): void {
   ipcMain.handle(
-    'plot-structure:get-by-novel',
-    wrap(async (novelId: string) => {
-      requireId(novelId, '小说ID')
+    'plotStructure:get-by-novel',
+    wrap(async (data: PlotStructureGetData) => {
+      requireObject(data, '查询数据')
+      requireId(data.novelId, '小说ID')
       const d = await services.resolveAsync<IDatabase>(DATABASE_TOKEN)
-      return d.getPlotStructureByNovel(novelId)
+      return d.getPlotStructureByNovel(data.novelId)
     })
   )
   ipcMain.handle(
-    'plot-structure:save',
+    'plotStructure:save',
     wrap(async (data: SavePlotStructureData) => {
       requireObject(data, '情节结构数据')
       requireId(data.novelId, '小说ID')
@@ -39,10 +47,11 @@ export function registerWorldHandlers(ipcMain: IpcMain, services: ServiceRegistr
 
   ipcMain.handle(
     'world:get-by-novel',
-    wrap(async (novelId: string) => {
-      requireId(novelId, '小说ID')
+    wrap(async (data: WorldGetData) => {
+      requireObject(data, '查询数据')
+      requireId(data.novelId, '小说ID')
       const d = await services.resolveAsync<IDatabase>(DATABASE_TOKEN)
-      return d.getWorldByNovel(novelId)
+      return d.getWorldByNovel(data.novelId)
     })
   )
   ipcMain.handle(
@@ -59,10 +68,11 @@ export function registerWorldHandlers(ipcMain: IpcMain, services: ServiceRegistr
 
   ipcMain.handle(
     'outline:get',
-    wrap(async (novelId: string) => {
-      requireId(novelId, '小说ID')
+    wrap(async (data: OutlineGetData) => {
+      requireObject(data, '查询数据')
+      requireId(data.novelId, '小说ID')
       const d = await services.resolveAsync<IDatabase>(DATABASE_TOKEN)
-      return d.getOutline(novelId)
+      return d.getOutline(data.novelId)
     })
   )
   ipcMain.handle(

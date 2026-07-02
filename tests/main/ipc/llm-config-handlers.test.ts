@@ -78,7 +78,7 @@ describe('LLM Config IPC Handlers', () => {
       const result = await handler(null, config)
       expect(mockConfigure).toHaveBeenCalledWith(config)
       expect(SecureLLMConfig.save).toHaveBeenCalled()
-      expect(result).toBe(true)
+      expect(result.success).toBe(true)
     })
 
     it('should reject short api key', async () => {
@@ -148,7 +148,8 @@ describe('LLM Config IPC Handlers', () => {
 
       const result = await handler(null, config)
       expect(mockTestConnection).toHaveBeenCalledWith(config)
-      expect(result).toBe(true)
+      expect(result.success).toBe(true)
+      expect(result.connected).toBe(true)
     })
 
     it('should reject short api key', async () => {

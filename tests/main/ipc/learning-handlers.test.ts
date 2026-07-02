@@ -92,7 +92,7 @@ describe('Learning IPC Handlers', () => {
         response: 'test response',
         duration: 100
       })
-      expect(result).toBe(true)
+      expect(result.success).toBe(true)
       expect(mockRecordInteraction).toHaveBeenCalled()
     })
 
@@ -200,14 +200,14 @@ describe('Learning IPC Handlers', () => {
       const handler = getRegisteredHandler('learning:analyze')
       const project = await db.createProject({ name: 'Analyze Test', genre: 'fantasy', status: 'planning' })
 
-      const result = await handler(null, project.id)
+      const result = await handler(null, { projectId: project.id })
       expect(mockAnalyzeProject).toHaveBeenCalledWith(project.id)
       expect(result).toBeDefined()
     })
 
     it('should reject invalid project ID', async () => {
       const handler = getRegisteredHandler('learning:analyze')
-      await expect(handler(null, 'invalid')).rejects.toThrow('项目ID 格式无效')
+      await expect(handler(null, { projectId: 'invalid' })).rejects.toThrow('项目ID 格式无效')
     })
   })
 
@@ -216,7 +216,7 @@ describe('Learning IPC Handlers', () => {
       const handler = getRegisteredHandler('learning:summary')
       const project = await db.createProject({ name: 'Summary Test', genre: 'fantasy', status: 'planning' })
 
-      const result = await handler(null, project.id)
+      const result = await handler(null, { projectId: project.id })
       expect(mockGetProjectSummary).toHaveBeenCalledWith(project.id)
       expect(result).toBeDefined()
     })
@@ -227,7 +227,7 @@ describe('Learning IPC Handlers', () => {
       const handler = getRegisteredHandler('memory:search')
       const project = await db.createProject({ name: 'Memory Test', genre: 'fantasy', status: 'planning' })
 
-      const result = await handler(null, project.id, 'test query')
+      const result = await handler(null, { projectId: project.id, query: 'test query' })
       expect(mockSearchMemory).toHaveBeenCalledWith(project.id, 'test query')
       expect(Array.isArray(result)).toBe(true)
     })
@@ -236,7 +236,7 @@ describe('Learning IPC Handlers', () => {
       const handler = getRegisteredHandler('memory:search')
       const project = await db.createProject({ name: 'Memory Empty', genre: 'fantasy', status: 'planning' })
 
-      await expect(handler(null, project.id, '')).rejects.toThrow('搜索关键词 不能为空')
+      await expect(handler(null, { projectId: project.id, query: '' })).rejects.toThrow('搜索关键词 不能为空')
     })
   })
 })

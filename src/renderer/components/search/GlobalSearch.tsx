@@ -1,6 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
-import { logger } from '../../utils/logger'
-import { chapterService, characterService, novelService, projectService } from '../../services'
+import { logger } from '@renderer/utils/logger'
+import { chapterService, characterService, novelService, projectService } from '@renderer/services'
 
 interface SearchResult {
   type: 'project' | 'chapter' | 'character'

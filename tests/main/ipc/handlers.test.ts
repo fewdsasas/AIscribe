@@ -97,7 +97,7 @@ describe('IPC Handlers', () => {
       const project = await createHandler(null, { name: 'Get Test', description: '', genre: 'sci_fi' })
 
       const getHandler = getRegisteredHandler('project:get')
-      const result = await getHandler(null, project.id)
+      const result = await getHandler(null, { id: project.id })
       expect(result).toBeDefined()
       expect(result.name).toBe('Get Test')
     })
@@ -188,25 +188,27 @@ describe('IPC Handlers', () => {
       const project = await createHandler(null, { name: 'Original Name', description: '', genre: 'fantasy' })
 
       const handler = getRegisteredHandler('project:update')
-      const result = await handler(null, project.id, { name: 'Updated Name' })
-      expect(result).toBe(true)
+      const result = await handler(null, { id: project.id, updates: { name: 'Updated Name' } })
+      expect(result.success).toBe(true)
 
       const getHandler = getRegisteredHandler('project:get')
-      const updated = await getHandler(null, project.id)
+      const updated = await getHandler(null, { id: project.id })
       expect(updated).toBeDefined()
       expect(updated.name).toBe('Updated Name')
     })
 
     it('should reject invalid data', async () => {
       const handler = getRegisteredHandler('project:update')
-      await expect(handler(null, '00000000-0000-0000-0000-000000000001', null)).rejects.toThrow('项目更新数据 格式无效')
+      await expect(handler(null, { id: '00000000-0000-0000-0000-000000000001', updates: null })).rejects.toThrow(
+        '项目更新内容 格式无效'
+      )
     })
 
     it('should reject empty project name', async () => {
       const handler = getRegisteredHandler('project:update')
-      await expect(handler(null, '00000000-0000-0000-0000-000000000001', { name: '' })).rejects.toThrow(
-        '项目名称 不能为空'
-      )
+      await expect(
+        handler(null, { id: '00000000-0000-0000-0000-000000000001', updates: { name: '' } })
+      ).rejects.toThrow('项目名称 不能为空')
     })
   })
 
@@ -216,17 +218,17 @@ describe('IPC Handlers', () => {
       const project = await createHandler(null, { name: 'To Delete', description: '', genre: 'fantasy' })
 
       const handler = getRegisteredHandler('project:delete')
-      const result = await handler(null, project.id)
-      expect(result).toBe(true)
+      const result = await handler(null, { id: project.id })
+      expect(result.success).toBe(true)
 
       const getHandler = getRegisteredHandler('project:get')
-      const deleted = await getHandler(null, project.id)
+      const deleted = await getHandler(null, { id: project.id })
       expect(deleted).toBeNull()
     })
 
     it('should not throw when deleting non-existent ID', async () => {
       const handler = getRegisteredHandler('project:delete')
-      await expect(handler(null, '00000000-0000-0000-0000-000000000001')).resolves.not.toThrow()
+      await expect(handler(null, { id: '00000000-0000-0000-0000-000000000001' })).resolves.not.toThrow()
     })
   })
 
@@ -264,7 +266,7 @@ describe('IPC Handlers', () => {
       })
 
       const handler = getRegisteredHandler('novel:get')
-      const result = await handler(null, novel.id)
+      const result = await handler(null, { id: novel.id })
       expect(result).toBeDefined()
       expect(result.id).toBe(novel.id)
       expect(result.title).toBe('Get Novel')
@@ -273,7 +275,7 @@ describe('IPC Handlers', () => {
 
     it('should return null for non-existent ID', async () => {
       const handler = getRegisteredHandler('novel:get')
-      const result = await handler(null, '00000000-0000-0000-0000-000000000001')
+      const result = await handler(null, { id: '00000000-0000-0000-0000-000000000001' })
       expect(result).toBeNull()
     })
   })
@@ -287,7 +289,7 @@ describe('IPC Handlers', () => {
       const novel = await createHandler(null, { projectId: project.id, title: 'Project Novel' })
 
       const handler = getRegisteredHandler('novel:get-by-project')
-      const result = await handler(null, project.id)
+      const result = await handler(null, { projectId: project.id })
       expect(result).toBeDefined()
       expect(result.id).toBe(novel.id)
       expect(result.projectId).toBe(project.id)
@@ -307,7 +309,7 @@ describe('IPC Handlers', () => {
       await chapterHandler(null, { novelId: novel.id, title: 'Chapter 2', content: '' })
 
       const handler = getRegisteredHandler('chapter:list')
-      const result = await handler(null, novel.id)
+      const result = await handler(null, { novelId: novel.id })
       expect(Array.isArray(result)).toBe(true)
       expect(result.length).toBe(2)
       expect(result[0].novelId).toBe(novel.id)
@@ -326,7 +328,7 @@ describe('IPC Handlers', () => {
       const chapter = await createHandler(null, { novelId: novel.id, title: 'Test Chapter', content: 'Content' })
 
       const handler = getRegisteredHandler('chapter:get')
-      const result = await handler(null, chapter.id)
+      const result = await handler(null, { id: chapter.id })
       expect(result).toBeDefined()
       expect(result.id).toBe(chapter.id)
       expect(result.title).toBe('Test Chapter')
@@ -334,7 +336,7 @@ describe('IPC Handlers', () => {
 
     it('should return null for non-existent ID', async () => {
       const handler = getRegisteredHandler('chapter:get')
-      const result = await handler(null, '00000000-0000-0000-0000-000000000001')
+      const result = await handler(null, { id: '00000000-0000-0000-0000-000000000001' })
       expect(result).toBeNull()
     })
   })
@@ -351,29 +353,31 @@ describe('IPC Handlers', () => {
       const chapter = await createHandler(null, { novelId: novel.id, title: 'Original Title', content: '' })
 
       const handler = getRegisteredHandler('chapter:update')
-      const result = await handler(null, chapter.id, { title: 'Updated Title' })
-      expect(result).toBe(true)
+      const result = await handler(null, { id: chapter.id, updates: { title: 'Updated Title' } })
+      expect(result.success).toBe(true)
 
       const getHandler = getRegisteredHandler('chapter:get')
-      const updated = await getHandler(null, chapter.id)
+      const updated = await getHandler(null, { id: chapter.id })
       expect(updated.title).toBe('Updated Title')
     })
 
     it('should reject empty chapter title', async () => {
       const handler = getRegisteredHandler('chapter:update')
-      await expect(handler(null, '00000000-0000-0000-0000-000000000001', { title: '' })).rejects.toThrow(
-        '章节标题 不能为空'
-      )
+      await expect(
+        handler(null, { id: '00000000-0000-0000-0000-000000000001', updates: { title: '' } })
+      ).rejects.toThrow('章节标题 不能为空')
     })
 
     it('should reject non-object update data', async () => {
       const handler = getRegisteredHandler('chapter:update')
-      await expect(handler(null, '00000000-0000-0000-0000-000000000001', null)).rejects.toThrow('章节更新数据 格式无效')
+      await expect(handler(null, { id: '00000000-0000-0000-0000-000000000001', updates: null })).rejects.toThrow(
+        '章节更新内容 格式无效'
+      )
     })
 
     it('should reject invalid chapter ID', async () => {
       const handler = getRegisteredHandler('chapter:update')
-      await expect(handler(null, 'invalid-id', { title: 'Title' })).rejects.toThrow('章节ID 格式无效')
+      await expect(handler(null, { id: 'invalid-id', updates: { title: 'Title' } })).rejects.toThrow('章节ID 格式无效')
     })
   })
 
@@ -395,7 +399,7 @@ describe('IPC Handlers', () => {
       await chapterHandler(null, { novelId: novel2.id, title: 'Ch1', content: '' })
 
       const handler = getRegisteredHandler('chapter:counts')
-      const result = await handler(null, [novel1.id, novel2.id])
+      const result = await handler(null, { novelIds: [novel1.id, novel2.id] })
       expect(result).toBeDefined()
       expect(result[novel1.id]).toBe(2)
       expect(result[novel2.id]).toBe(1)
@@ -403,18 +407,18 @@ describe('IPC Handlers', () => {
 
     it('should return empty object for empty array', async () => {
       const handler = getRegisteredHandler('chapter:counts')
-      const result = await handler(null, [])
+      const result = await handler(null, { novelIds: [] })
       expect(result).toEqual({})
     })
 
     it('should reject non-array input', async () => {
       const handler = getRegisteredHandler('chapter:counts')
-      await expect(handler(null, 'not-array')).rejects.toThrow('novelIds 必须为数组')
+      await expect(handler(null, { novelIds: 'not-array' })).rejects.toThrow('novelIds 必须为数组')
     })
 
     it('should reject invalid novel IDs in array', async () => {
       const handler = getRegisteredHandler('chapter:counts')
-      await expect(handler(null, ['invalid-id'])).rejects.toThrow('小说ID 格式无效')
+      await expect(handler(null, { novelIds: ['invalid-id'] })).rejects.toThrow('小说ID 格式无效')
     })
   })
 })

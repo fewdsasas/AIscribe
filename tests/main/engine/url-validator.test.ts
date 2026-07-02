@@ -123,6 +123,8 @@ describe('validateEndpoint', () => {
       const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {})
       expect(() => validateEndpoint('http://10.0.0.1/api')).toThrow()
       expect(warnSpy).toHaveBeenCalledWith(
+        expect.any(String),
+        '[WARN]',
         expect.stringContaining('[Security] 检测到私有网络地址作为 API 端点: 10.0.0.1')
       )
       warnSpy.mockRestore()

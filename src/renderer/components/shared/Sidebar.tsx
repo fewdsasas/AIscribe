@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react'
-import { useResponsive } from '../../hooks/useResponsive'
+import { useResponsive } from '@renderer/hooks/useResponsive'
 
 interface SidebarProps {
   currentView: string
@@ -34,7 +34,7 @@ const navItems: NavItem[] = [
     icon: 'M12 3h7a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7m0 0v4a2 2 0 0 0 2 2h4'
   },
   { id: 'workshop', label: '技能', icon: 'M12 3h7a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7' },
-  { id: 'ai-chat', label: 'AI 对话', icon: 'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z' },
+  { id: 'aiChat', label: 'AI 对话', icon: 'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z' },
   {
     id: 'settings',
     label: '设置',
@@ -62,7 +62,7 @@ const SHORTCUT_KEYS: Record<string, string> = {
   reader: '3',
   studio: '4',
   workshop: '5',
-  'ai-chat': '6',
+  aiChat: '6',
   settings: '7'
 }
 

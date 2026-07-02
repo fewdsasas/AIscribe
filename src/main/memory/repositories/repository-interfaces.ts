@@ -1,5 +1,6 @@
 import type {
   Chapter,
+  ChapterListPage,
   ChapterSummary,
   Character,
   Checkpoint,
@@ -27,6 +28,8 @@ export interface IProjectRepository {
 export interface IChapterRepository {
   create(data: Partial<Omit<Chapter, 'id' | 'createdAt' | 'updatedAt'>> & { id?: string }): Chapter
   listByNovel(novelId: string): ChapterSummary[]
+  listByNovelPaginated(novelId: string, offset: number, limit: number): ChapterListPage
+  countByNovel(novelId: string): number
   listByNovelWithContent(novelId: string): Chapter[]
   getById(id: string): Chapter | null
   update(id: string, data: Partial<Omit<Chapter, 'id' | 'createdAt' | 'novelId'>>): void

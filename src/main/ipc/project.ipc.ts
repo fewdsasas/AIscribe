@@ -2,7 +2,14 @@ import type { IpcMain } from 'electron'
 import { DATABASE_TOKEN, requireId, requireNonEmptyString, requireObject, wrap } from './index'
 import type { ServiceRegistry } from '../di'
 import type { IDatabase } from '../di'
-import type { CreateProjectData, UpdateProjectData } from '../../shared/types/ipc'
+import type {
+  CreateProjectData,
+  DeleteByIdData,
+  GetByIdData,
+  OperationResult,
+  UpdateByIdData,
+  UpdateProjectData
+} from '../../shared/types/ipc'
 
 export function registerProjectHandlers(ipcMain: IpcMain, services: ServiceRegistry): void {
   ipcMain.handle(
@@ -30,30 +37,33 @@ export function registerProjectHandlers(ipcMain: IpcMain, services: ServiceRegis
   )
   ipcMain.handle(
     'project:get',
-    wrap(async (id: string) => {
-      requireId(id, '项目ID')
+    wrap(async (data: GetByIdData) => {
+      requireObject(data, '查询数据')
+      requireId(data.id, '项目ID')
       const d = await services.resolveAsync<IDatabase>(DATABASE_TOKEN)
-      return d.getProject(id)
+      return d.getProject(data.id)
     })
   )
   ipcMain.handle(
     'project:update',
-    wrap(async (id: string, data: UpdateProjectData) => {
-      requireId(id, '项目ID')
-      requireObject(data, '项目更新数据')
-      if ('name' in data) requireNonEmptyString(data.name, '项目名称')
+    wrap(async (data: UpdateByIdData<UpdateProjectData>): Promise<OperationResult> => {
+      requireObject(data, '更新数据')
+      requireId(data.id, '项目ID')
+      requireObject(data.updates, '项目更新内容')
+      if ('name' in data.updates) requireNonEmptyString(data.updates.name, '项目名称')
       const d = await services.resolveAsync<IDatabase>(DATABASE_TOKEN)
-      d.updateProject(id, data)
-      return true
+      d.updateProject(data.id, data.updates)
+      return { success: true }
     })
   )
   ipcMain.handle(
     'project:delete',
-    wrap(async (id: string) => {
-      requireId(id, '项目ID')
+    wrap(async (data: DeleteByIdData): Promise<OperationResult> => {
+      requireObject(data, '删除数据')
+      requireId(data.id, '项目ID')
       const d = await services.resolveAsync<IDatabase>(DATABASE_TOKEN)
-      d.deleteProject(id)
-      return true
+      d.deleteProject(data.id)
+      return { success: true }
     })
   )
 }

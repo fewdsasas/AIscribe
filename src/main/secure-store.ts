@@ -15,7 +15,12 @@ const PBKDF2_DIGEST = 'sha256'
 const FILE_VERSION_V2 = Buffer.from('AISC')
 
 function getMachineId(): string {
-  return [app.getPath('userData'), process.env.COMPUTERNAME || 'unknown', os.hostname()].join(':')
+  try {
+    return [app.getPath('userData'), process.env.COMPUTERNAME || 'unknown', os.hostname()].join(':')
+  } catch {
+    // 在测试环境或 electron 未就绪时，退回到仅主机信息。
+    return [process.env.COMPUTERNAME || 'unknown', os.hostname()].join(':')
+  }
 }
 
 function deriveLegacyKey(material: string): Buffer {
@@ -31,7 +36,7 @@ function isV2Format(payload: Buffer): boolean {
   return payload.subarray(0, 4).equals(FILE_VERSION_V2)
 }
 
-function deriveKeys(salt: Buffer): Buffer[] {
+export function deriveKeys(salt: Buffer): Buffer[] {
   const primaryMaterial = getMachineId()
   const fallbackMaterial = [process.env.COMPUTERNAME || 'unknown', os.hostname()].join(':')
   return [deriveKey(primaryMaterial, salt), deriveKey(fallbackMaterial, salt)]

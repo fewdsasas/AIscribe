@@ -17,7 +17,7 @@ const VIEW_META: Record<string, { label: string; icon: string }> = {
   reader: { label: '阅读', icon: 'M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2zM22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z' },
   studio: { label: '工作室', icon: 'M12 3h7a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7' },
   workshop: { label: '技能', icon: 'M12 3h7a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h7' },
-  'ai-chat': { label: 'AI 对话', icon: 'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z' },
+  aiChat: { label: 'AI 对话', icon: 'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z' },
   settings: {
     label: '设置',
     icon: 'M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42'
@@ -79,10 +79,10 @@ export const TopBar = React.memo<TopBarProps>(
         </div>
 
         <div className="topbar-right">
-          {currentView !== 'ai-chat' && (
+          {currentView !== 'aiChat' && (
             <button
               className="topbar-btn"
-              onClick={() => onNavigate?.('ai-chat')}
+              onClick={() => onNavigate?.('aiChat')}
               title="AI 对话"
               aria-label="打开 AI 对话"
             >

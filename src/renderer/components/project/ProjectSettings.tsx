@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { projectService } from '../../services'
+import { projectService } from '@renderer/services'
 
 const GENRES = ['玄幻', '仙侠', '都市', '悬疑', '科幻', '言情', '轻小说', '历史', '游戏', '其他']
 const STATUSES = [

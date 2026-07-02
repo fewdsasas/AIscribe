@@ -8,7 +8,7 @@ describe('createStorageService', () => {
   it('should delegate set to api.secureStorageSet', async () => {
     const api = createMockAiscribeAPI()
     const service = createStorageService(api)
-    vi.mocked(api.secureStorageSet).mockResolvedValue(true)
+    vi.mocked(api.secureStorageSet).mockResolvedValue({ success: true })
 
     const result = await service.set('key1', 'value1')
 
@@ -30,7 +30,7 @@ describe('createStorageService', () => {
   it('should delegate remove to api.secureStorageRemove', async () => {
     const api = createMockAiscribeAPI()
     const service = createStorageService(api)
-    vi.mocked(api.secureStorageRemove).mockResolvedValue(true)
+    vi.mocked(api.secureStorageRemove).mockResolvedValue({ success: true })
 
     const result = await service.remove('key1')
 

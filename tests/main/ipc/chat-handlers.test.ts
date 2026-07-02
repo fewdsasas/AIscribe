@@ -214,14 +214,19 @@ describe('Chat IPC Handlers', () => {
   describe('llm:cancel-stream', () => {
     it('should cancel stream by requestId', async () => {
       const handler = getRegisteredHandler('llm:cancel-stream')
-      const result = await handler(null, 'req-123')
+      const result = await handler(null, { requestId: 'req-123' })
       expect(mockCancelStream).toHaveBeenCalledWith('req-123')
       expect(result).toBe(true)
     })
 
     it('should reject empty requestId', async () => {
       const handler = getRegisteredHandler('llm:cancel-stream')
-      await expect(handler(null, '')).rejects.toThrow('requestId 不能为空')
+      await expect(handler(null, { requestId: '' })).rejects.toThrow('请求ID 不能为空')
+    })
+
+    it('should reject non-object request', async () => {
+      const handler = getRegisteredHandler('llm:cancel-stream')
+      await expect(handler(null, null)).rejects.toThrow('取消流数据 格式无效')
     })
   })
 })

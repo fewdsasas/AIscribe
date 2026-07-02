@@ -109,9 +109,9 @@ describe('World IPC Handlers', () => {
     })
   })
 
-  describe('plot-structure:save', () => {
+  describe('plotStructure:save', () => {
     it('should reject invalid framework', async () => {
-      const handler = getRegisteredHandler('plot-structure:save')
+      const handler = getRegisteredHandler('plotStructure:save')
       const project = await db.createProject({ name: 'Plot Test', genre: 'fantasy', status: 'planning' })
       const novel = await db.createNovel({
         projectId: project.id,
@@ -133,7 +133,7 @@ describe('World IPC Handlers', () => {
     })
 
     it('should reject missing novel ID', async () => {
-      const handler = getRegisteredHandler('plot-structure:save')
+      const handler = getRegisteredHandler('plotStructure:save')
       await expect(handler(null, { framework: 'three_act', beats: [] })).rejects.toThrow('小说ID 不能为空')
     })
   })

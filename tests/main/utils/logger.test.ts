@@ -18,8 +18,8 @@ describe('main logger', () => {
 
     logger.log('dev log')
     logger.info('dev info')
-    expect(logSpy).toHaveBeenCalledWith('dev log')
-    expect(infoSpy).toHaveBeenCalledWith('dev info')
+    expect(logSpy).toHaveBeenCalledWith(expect.any(String), '[LOG]', 'dev log')
+    expect(infoSpy).toHaveBeenCalledWith(expect.any(String), '[INFO]', 'dev info')
   })
 
   it('should suppress log/info in production', async () => {
@@ -42,7 +42,7 @@ describe('main logger', () => {
 
     logger.warn('warn msg')
     logger.error('error msg')
-    expect(warnSpy).toHaveBeenCalledWith('warn msg')
-    expect(errorSpy).toHaveBeenCalledWith('error msg')
+    expect(warnSpy).toHaveBeenCalledWith(expect.any(String), '[WARN]', 'warn msg')
+    expect(errorSpy).toHaveBeenCalledWith(expect.any(String), '[ERROR]', 'error msg')
   })
 })

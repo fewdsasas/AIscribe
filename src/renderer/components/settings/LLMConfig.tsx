@@ -1,7 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react'
 import type { LLMCustomProtocol } from '@shared/types'
 import { DEFAULT_ENDPOINTS, DEFAULT_MODELS } from '@shared/constants'
-import { llmService } from '../../services'
+import { llmService } from '@renderer/services'
 import Skeleton from '../shared/Skeleton'
 import { ConfirmDialog } from '../shared/ConfirmDialog'
 
@@ -154,14 +154,17 @@ export const LLMConfig: React.FC = () => {
   }
 
   const isCustom = provider === 'custom'
-  const baseUrlValid = !isCustom || (!!baseUrl.trim() && (() => {
-    try {
-      const parsed = new URL(baseUrl.trim())
-      return parsed.protocol === 'http:' || parsed.protocol === 'https:'
-    } catch {
-      return false
-    }
-  })())
+  const baseUrlValid =
+    !isCustom ||
+    (!!baseUrl.trim() &&
+      (() => {
+        try {
+          const parsed = new URL(baseUrl.trim())
+          return parsed.protocol === 'http:' || parsed.protocol === 'https:'
+        } catch {
+          return false
+        }
+      })())
   const canSubmit = !!apiKey.trim() && !!model.trim() && baseUrlValid
 
   if (loading) {

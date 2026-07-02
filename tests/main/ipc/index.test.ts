@@ -5,7 +5,10 @@ vi.mock('electron', () => ({
 }))
 
 vi.mock('../../../src/main/ipc/permission', () => ({
-  withPermission: vi.fn((_channel: string, handler: unknown) => handler)
+  withPermission: vi.fn((_channel: string, handler: unknown) => handler),
+  permissionManager: {
+    setPermissions: vi.fn()
+  }
 }))
 
 const registerFns = vi.hoisted(() => ({

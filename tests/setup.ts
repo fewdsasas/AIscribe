@@ -43,7 +43,11 @@ Object.defineProperty(window, 'aiscribe', {
     secureStorageSet: () => Promise.resolve(true),
     secureStorageGet: () => Promise.resolve(null),
     secureStorageRemove: () => Promise.resolve(true),
-    llmIsConfigured: () => Promise.resolve(false)
+    llmIsConfigured: () => Promise.resolve(false),
+    onRepairProgress: () => {},
+    onRepairDone: () => {},
+    removeRepairListeners: () => {},
+    triggerAiRepair: () => Promise.resolve({ applied: false, actionsCount: 0, actions: [] })
   },
   writable: true,
   configurable: true

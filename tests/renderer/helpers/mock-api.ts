@@ -13,6 +13,8 @@ export function createMockAiscribeAPI(): AiscribeAPI {
     novelCreate: vi.fn(),
     novelGet: vi.fn(),
     novelGetByProject: vi.fn(),
+    novelImport: vi.fn(),
+    selectNovelFile: vi.fn(),
 
     chapterCreate: vi.fn(),
     chapterList: vi.fn(),
@@ -71,6 +73,12 @@ export function createMockAiscribeAPI(): AiscribeAPI {
     secureStorageGet: vi.fn(),
     secureStorageRemove: vi.fn(),
 
-    getMemoryUsage: vi.fn()
+    getMemoryUsage: vi.fn(),
+
+    // AI structure repair
+    triggerAiRepair: vi.fn(),
+    onRepairProgress: vi.fn(),
+    onRepairDone: vi.fn(),
+    removeRepairListeners: vi.fn()
   } as unknown as AiscribeAPI
 }

@@ -17,7 +17,7 @@ const VIEW_MAX_WIDTHS: Record<string, string> = {
   dashboard: 'max-w-6xl',
   studio: 'max-w-5xl',
   workshop: 'max-w-5xl',
-  'ai-chat': 'max-w-4xl',
+  aiChat: 'max-w-4xl',
   settings: 'max-w-3xl'
 }
 

@@ -76,7 +76,7 @@ vi.mock('../../src/renderer/layouts/MainLayout', () => ({
       <button onClick={() => onNavigate('editor')}>go editor</button>
       <button onClick={() => onNavigate('reader')}>go reader</button>
       <button onClick={() => onNavigate('settings')}>go settings</button>
-      <button onClick={() => onNavigate('ai-chat')}>go ai-chat</button>
+      <button onClick={() => onNavigate('aiChat')}>go ai-chat</button>
       <button onClick={() => onNavigate('studio')}>go studio</button>
       <button onClick={() => onNavigate('workshop')}>go workshop</button>
       {children}

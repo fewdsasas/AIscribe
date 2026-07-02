@@ -1,7 +1,7 @@
 import type { StateCreator } from 'zustand'
 import { storageService } from '@renderer/services'
 import { logger } from '../utils/logger'
-import { CHAT_SAVE_DEBOUNCE_MS } from '../../shared/constants'
+import { CHAT_SAVE_DEBOUNCE_MS } from '@shared/constants'
 
 function genId(): string {
   return crypto.randomUUID()

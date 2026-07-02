@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import type { SkillInvocation } from '../../store'
+import type { SkillInvocation } from '@renderer/store'
 
 interface SkillInvocationCardProps {
   invocation: SkillInvocation

@@ -1,15 +1,15 @@
 import { SIMULATED_STREAM_BASE_DELAY_MS, SIMULATED_STREAM_MAX_EXTRA_DELAY_MS } from '../../../shared/constants'
-import type { AppStore } from '../../store'
+import type { AppStore } from '@renderer/store'
 import React, { useCallback, useEffect, useRef, useState } from 'react'
-import { useAppStore } from '../../store'
+import { useAppStore } from '@renderer/store'
 import { ChatMessage } from './ChatMessage'
 import { ChatInput, type ChatInputHandle } from './ChatInput'
 import { ConfirmDialog } from '../shared/ConfirmDialog'
 import { DEFAULT_RESPONSE, NO_SKILL_RESPONSE, SIMULATED_RESPONSES } from './simulated-responses'
-import { logger } from '../../utils/logger'
-import { useToast } from '../../components/shared/Toast'
-import { learningService, llmService } from '../../services'
-import type { LLMMessage } from '../../../shared/types'
+import { logger } from '@renderer/utils/logger'
+import { useToast } from '@renderer/components/shared/Toast'
+import { learningService, llmService } from '@renderer/services'
+import type { LLMMessage } from '@shared/types'
 
 interface AIChatViewProps {
   projectId: string | null

@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { ForceDirectedLayout, type ForceEdge, type ForceNode } from './force-directed'
-import type { Character } from '../../../shared/types'
+import type { Character } from '@shared/types'
 
 interface CharacterNetworkProps {
   characters: Character[]

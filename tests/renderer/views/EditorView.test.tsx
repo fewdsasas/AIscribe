@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { EditorView } from '@renderer/views/EditorView'
 import { chapterService, llmService, novelService, projectService } from '@renderer/services'
-import type { Chapter, ChapterSummary, Novel, Project } from '@shared/types'
+import type { Chapter, ChapterListPage, ChapterSummary, Novel, Project } from '@shared/types'
 
 vi.mock('@renderer/services', () => ({
   projectService: {
@@ -15,6 +15,8 @@ vi.mock('@renderer/services', () => ({
   },
   chapterService: {
     list: vi.fn(),
+    listPaginated: vi.fn(),
+    count: vi.fn(),
     get: vi.fn(),
     update: vi.fn()
   },
@@ -68,7 +70,13 @@ describe('EditorView', () => {
       { id: 'p2', name: 'Project 2' } as Project
     ])
     mockedNovelService.getByProject.mockResolvedValue({ id: 'n1', projectId: 'p1', title: 'Novel 1' } as Novel)
-    mockedChapterService.list.mockResolvedValue([{ id: 'c1', novelId: 'n1', title: 'Chapter 1' } as ChapterSummary])
+    mockedChapterService.count.mockResolvedValue(1)
+    mockedChapterService.listPaginated.mockResolvedValue({
+      items: [{ id: 'c1', novelId: 'n1', title: 'Chapter 1' } as ChapterSummary],
+      total: 1,
+      offset: 0,
+      limit: 100
+    } as ChapterListPage)
     mockedChapterService.get.mockResolvedValue({
       id: 'c1',
       novelId: 'n1',
@@ -95,7 +103,8 @@ describe('EditorView', () => {
     await waitFor(() => {
       expect(mockedNovelService.getByProject).toHaveBeenCalledWith('p1')
     })
-    expect(mockedChapterService.list).toHaveBeenCalledWith('n1')
+    expect(mockedChapterService.count).toHaveBeenCalledWith('n1')
+    expect(mockedChapterService.listPaginated).toHaveBeenCalledWith('n1', 0, 100)
     expect(screen.getByTestId('novel-editor')).toBeInTheDocument()
   })
 
@@ -104,7 +113,7 @@ describe('EditorView', () => {
     render(<EditorView projectId="p1" />)
 
     await waitFor(() => {
-      expect(mockedChapterService.list).toHaveBeenCalledWith('p1')
+      expect(mockedChapterService.count).toHaveBeenCalledWith('p1')
     })
   })
 
@@ -158,5 +167,64 @@ describe('EditorView', () => {
 
     fireEvent.click(screen.getByText('Project 2'))
     expect(onSwitchProject).toHaveBeenCalledWith('p2')
+  })
+
+  it('should only load first page of chapters initially', async () => {
+    const summaries = Array.from({ length: 200 }, (_, i) => ({
+      id: `c${i + 1}`,
+      novelId: 'n1',
+      title: `Chapter ${i + 1}`
+    })) as ChapterSummary[]
+    mockedChapterService.count.mockResolvedValue(200)
+    mockedChapterService.listPaginated.mockImplementation(
+      async (_novelId, offset, limit) =>
+        ({
+          items: summaries.slice(offset, offset + limit),
+          total: 200,
+          offset,
+          limit
+        }) as ChapterListPage
+    )
+
+    render(<EditorView projectId="p1" />)
+
+    await waitFor(() => {
+      expect(mockedChapterService.listPaginated).toHaveBeenCalledWith('n1', 0, 100)
+    })
+    expect(mockedChapterService.listPaginated).not.toHaveBeenCalledWith('n1', 100, 100)
+  })
+
+  it('should load more chapters when scrolling', async () => {
+    const summaries = Array.from({ length: 200 }, (_, i) => ({
+      id: `c${i + 1}`,
+      novelId: 'n1',
+      title: `Chapter ${i + 1}`
+    })) as ChapterSummary[]
+    mockedChapterService.count.mockResolvedValue(200)
+    mockedChapterService.listPaginated.mockImplementation(
+      async (_novelId, offset, limit) =>
+        ({
+          items: summaries.slice(offset, offset + limit),
+          total: 200,
+          offset,
+          limit
+        }) as ChapterListPage
+    )
+
+    render(<EditorView projectId="p1" />)
+
+    await waitFor(() => {
+      expect(screen.getByText('Chapter 1')).toBeInTheDocument()
+    })
+
+    const list = screen.getByText('Chapter 1').parentElement?.parentElement?.parentElement
+    if (list) {
+      list.scrollTop = 3600
+      fireEvent.scroll(list)
+    }
+
+    await waitFor(() => {
+      expect(mockedChapterService.listPaginated).toHaveBeenCalledWith('n1', 100, 100)
+    })
   })
 })

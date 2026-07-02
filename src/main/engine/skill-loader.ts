@@ -55,8 +55,8 @@ export class SkillLoader {
     let entries: fs.Dirent[]
     try {
       entries = fs.readdirSync(dirPath, { withFileTypes: true })
-    } catch (err) {
-      logger.error(`Failed to read skills directory: ${dirPath}`, err)
+    } catch (_err) {
+      logger.error(`Failed to read skills directory: ${dirPath}`, _err)
       return []
     }
     const loaded: SkillRecord[] = []
@@ -91,7 +91,7 @@ export class SkillLoader {
     let entries: fs.Dirent[]
     try {
       entries = fs.readdirSync(dirPath, { withFileTypes: true })
-    } catch (err) {
+    } catch (_err) {
       throw new Error(`读取技能目录失败: ${dirPath}`)
     }
 

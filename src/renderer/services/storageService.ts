@@ -9,9 +9,29 @@ export interface IStorageService {
 
 export function createStorageService(api: AiscribeAPI): IStorageService {
   return {
-    set: (key, value) => api.secureStorageSet?.(key, value) ?? Promise.resolve(false),
-    get: key => api.secureStorageGet?.(key) ?? Promise.resolve(null),
-    remove: key => api.secureStorageRemove?.(key) ?? Promise.resolve(false)
+    set: async (key, value) => {
+      try {
+        const result = await api.secureStorageSet?.(key, value)
+        return result?.success ?? false
+      } catch {
+        return false
+      }
+    },
+    get: async key => {
+      try {
+        return (await api.secureStorageGet?.(key)) ?? null
+      } catch {
+        return null
+      }
+    },
+    remove: async key => {
+      try {
+        const result = await api.secureStorageRemove?.(key)
+        return result?.success ?? false
+      } catch {
+        return false
+      }
+    }
   }
 }
 

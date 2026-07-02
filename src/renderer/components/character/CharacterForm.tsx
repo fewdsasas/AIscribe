@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react'
 import { useToast } from '../shared/Toast'
-import { logger } from '../../utils/logger'
-import { characterService } from '../../services'
-import type { CharacterRole } from '../../../shared/types'
+import { logger } from '@renderer/utils/logger'
+import { characterService } from '@renderer/services'
+import type { CharacterRole } from '@shared/types'
 
 const ROLES: CharacterRole[] = [
   'protagonist',

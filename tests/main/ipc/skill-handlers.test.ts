@@ -59,7 +59,7 @@ describe('Skill IPC Handlers', () => {
   describe('skill:get', () => {
     it('should get a skill by name', async () => {
       const handler = getRegisteredHandler('skill:get')
-      const result = await handler(null, 'test-skill')
+      const result = await handler(null, { name: 'test-skill' })
 
       expect(result).toBeDefined()
       expect(result?.name).toBe('test-skill')
@@ -67,21 +67,21 @@ describe('Skill IPC Handlers', () => {
 
     it('should return null for unknown skill', async () => {
       const handler = getRegisteredHandler('skill:get')
-      const result = await handler(null, 'unknown-skill')
+      const result = await handler(null, { name: 'unknown-skill' })
 
       expect(result).toBeNull()
     })
 
     it('should reject empty skill name', async () => {
       const handler = getRegisteredHandler('skill:get')
-      await expect(handler(null, '')).rejects.toThrow('技能名称 不能为空')
+      await expect(handler(null, { name: '' })).rejects.toThrow('技能名称 不能为空')
     })
   })
 
   describe('skill:invoke', () => {
     it('should invoke a skill', async () => {
       const handler = getRegisteredHandler('skill:invoke')
-      const result = await handler(null, 'test-skill', { prompt: 'test input' })
+      const result = await handler(null, { name: 'test-skill', prompt: 'test input' })
 
       expect(result).toBeDefined()
       expect(result.result).toContain('test-skill')
@@ -89,18 +89,12 @@ describe('Skill IPC Handlers', () => {
 
     it('should reject empty skill name', async () => {
       const handler = getRegisteredHandler('skill:invoke')
-      await expect(handler(null, '', { prompt: 'test' })).rejects.toThrow('技能名称 不能为空')
+      await expect(handler(null, { name: '', prompt: 'test' })).rejects.toThrow('技能名称 不能为空')
     })
 
     it('should reject empty prompt', async () => {
       const handler = getRegisteredHandler('skill:invoke')
-      await expect(handler(null, 'test-skill', { prompt: '' })).rejects.toThrow('提示词 不能为空')
-    })
-
-    it('should reject non-object input', async () => {
-      const handler = getRegisteredHandler('skill:invoke')
-      await expect(handler(null, 'test-skill', null)).rejects.toThrow('技能输入 格式无效')
-      await expect(handler(null, 'test-skill', undefined)).rejects.toThrow('技能输入 格式无效')
+      await expect(handler(null, { name: 'test-skill', prompt: '' })).rejects.toThrow('提示词 不能为空')
     })
   })
 })

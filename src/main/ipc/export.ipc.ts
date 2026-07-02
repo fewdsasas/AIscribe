@@ -6,6 +6,7 @@ import type { IDatabase } from '../di'
 import { ExportEngine, type ExportFormat } from '../export'
 import { chunkString, estimatePayloadSize, LARGE_PAYLOAD_THRESHOLD } from '../../shared/utils/ipc-payload'
 import { logger } from '../utils/logger'
+import type { ExportChunkData, ExportProjectData } from '../../shared/types/ipc'
 
 interface ChunkedExportSession {
   filename: string
@@ -35,13 +36,15 @@ function storeChunkedExport(filename: string, chunks: string[]): string {
 export function registerExportHandlers(ipcMain: IpcMain, services: ServiceRegistry): void {
   ipcMain.handle(
     'export:project',
-    wrap(async (options: { projectId: string; format: ExportFormat; includeSynopsis?: boolean }) => {
+    wrap(async (options: ExportProjectData) => {
       requireObject(options, '导出选项')
       requireId(options.projectId, '项目ID')
-      requireEnum(options.format, ['txt', 'markdown', 'html'], '导出格式')
+      requireEnum(options.format as ExportFormat, ['txt', 'markdown', 'html'], '导出格式')
       const d = await services.resolveAsync<IDatabase>(DATABASE_TOKEN)
       const ex = new ExportEngine(d)
-      const result = await ex.exportProject(options)
+      const result = await ex.exportProject(
+        options as { projectId: string; format: ExportFormat; includeSynopsis?: boolean }
+      )
       const payloadSize = estimatePayloadSize(result.content)
       if (payloadSize > LARGE_PAYLOAD_THRESHOLD) {
         logger.info(`[export:project] chunking large export: ${payloadSize} bytes`)
@@ -55,7 +58,7 @@ export function registerExportHandlers(ipcMain: IpcMain, services: ServiceRegist
 
   ipcMain.handle(
     'export:project:chunk',
-    wrap((request: { chunkId: string; index: number }) => {
+    wrap((request: ExportChunkData) => {
       requireObject(request, '分块请求')
       requireId(request.chunkId, '分块ID')
       requireNonNegativeNumber(request.index, '分块索引')

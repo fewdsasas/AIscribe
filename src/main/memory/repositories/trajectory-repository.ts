@@ -20,6 +20,9 @@ function mapRowToEntry(row: unknown[], columns: string[]): TrajectoryEntry {
 }
 
 export class TrajectoryRepository extends BaseRepository implements ITrajectoryRepository {
+  // 轨迹数据写频繁且查询多为最近记录，缓存收益低，直接禁用以减少内存占用
+  protected readonly cacheOptions = { max: 0, ttl: 0 }
+
   constructor(db: SqlJsDatabase) {
     super()
     this._db = db

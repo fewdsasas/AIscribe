@@ -6,6 +6,22 @@ import { logger } from '../utils/logger'
 import type { ServiceRegistry } from '../di'
 import { DATABASE_TOKEN, LEARNING_ENGINE_TOKEN, LLM_PROVIDER_TOKEN, SKILL_LOADER_TOKEN } from '../di'
 import { createIPCError, handleIPCError, sanitizeError } from './error-utils'
+import { registerProjectHandlers } from './project.ipc'
+import { registerNovelHandlers } from './novel.ipc'
+import { registerCharacterHandlers } from './character.ipc'
+import { registerWorldHandlers } from './world.ipc'
+import { registerCheckpointHandlers } from './checkpoint.ipc'
+import { registerWriterHandlers } from './writer.ipc'
+import { registerSkillHandlers } from './skill.ipc'
+import { registerChatHandlers } from './chat.ipc'
+import { registerLLMConfigHandlers } from './llm-config.ipc'
+import { registerLearningHandlers } from './learning.ipc'
+import { registerExportHandlers } from './export.ipc'
+import { registerDbHandlers } from './db.ipc'
+import { registerStorageHandlers } from './storage.ipc'
+import { registerMonitorHandlers } from './monitor.ipc'
+import { registerImportHandlers } from './import.ipc'
+import { registerRepairHandlers } from './repair.ipc'
 
 // Re-export for backward compatibility
 export { sanitizeError, createIPCError }
@@ -85,23 +101,6 @@ export function wrapEvent<TArgs extends unknown[], TReturn>(
 
 // ===== Register all IPC handlers =====
 
-import { registerProjectHandlers } from './project.ipc'
-import { registerNovelHandlers } from './novel.ipc'
-import { registerCharacterHandlers } from './character.ipc'
-import { registerWorldHandlers } from './world.ipc'
-import { registerCheckpointHandlers } from './checkpoint.ipc'
-import { registerWriterHandlers } from './writer.ipc'
-import { registerSkillHandlers } from './skill.ipc'
-import { registerChatHandlers } from './chat.ipc'
-import { registerLLMConfigHandlers } from './llm-config.ipc'
-import { registerLearningHandlers } from './learning.ipc'
-import { registerExportHandlers } from './export.ipc'
-import { registerDbHandlers } from './db.ipc'
-import { registerStorageHandlers } from './storage.ipc'
-import { registerMonitorHandlers } from './monitor.ipc'
-import { registerImportHandlers } from './import.ipc'
-import { registerRepairHandlers } from './repair.ipc'
-
 export function registerIpcHandlers(ipcMain: IpcMain, services: ServiceRegistry): void {
   // 为主应用窗口显式授予完整权限。默认权限已收缩为 read，此处显式授权可防止
   // 新窗口/新上下文意外获得写/管理权限。未来应按窗口类型拆分权限集。
@@ -109,16 +108,9 @@ export function registerIpcHandlers(ipcMain: IpcMain, services: ServiceRegistry)
 
   const guardedIpcMain: IpcMain = Object.create(ipcMain)
   guardedIpcMain.handle = (channel: string, handler: (event: IpcMainInvokeEvent, ...args: unknown[]) => unknown) => {
-    // 注入 channel 名称，用于错误日志中的上下文定位
-    const wrappedHandler = async (event: IpcMainInvokeEvent, ...args: unknown[]): Promise<unknown> => {
-      try {
-        return await handler(event, ...args)
-      } catch (e) {
-        logger.error(`IPC [${channel}] failed:`, e instanceof Error ? e.message : String(e))
-        throw e
-      }
-    }
-    ipcMain.handle(channel, withPermission(channel, wrappedHandler))
+    // 所有 handler 均已通过 wrap()/wrapEvent() 统一捕获异常并转换为 IPCError，
+    // 此处无需再包 try-catch；withPermission 负责权限校验。
+    ipcMain.handle(channel, withPermission(channel, handler))
   }
 
   registerProjectHandlers(guardedIpcMain, services)

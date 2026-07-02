@@ -30,7 +30,20 @@ describe('useIPCQuery', () => {
     })
 
     expect(result.current.error).toEqual(error)
+    expect(result.current.friendlyError).toBe('fetch failed')
     expect(result.current.data).toBeUndefined()
+  })
+
+  it('should provide friendly error for known error types', async () => {
+    const fetcher = vi.fn().mockRejectedValue(new Error('项目ID 格式无效'))
+    const { result } = renderHook(() => useIPCQuery(fetcher, []))
+
+    await waitFor(() => {
+      expect(result.current.loading).toBe(false)
+    })
+
+    expect(result.current.error).toBeInstanceOf(Error)
+    expect(result.current.friendlyError).toBe('ID 格式不正确，请检查输入')
   })
 
   it('should wrap non-Error fetch rejection', async () => {
@@ -108,6 +121,7 @@ describe('useIPCMutation', () => {
     await waitFor(() => {
       expect(result.current.error).toEqual(error)
     })
+    expect(result.current.friendlyError).toBe('mutation failed')
     expect(result.current.loading).toBe(false)
   })
 

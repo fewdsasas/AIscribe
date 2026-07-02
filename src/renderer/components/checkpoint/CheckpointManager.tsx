@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { ConfirmDialog } from '../shared/ConfirmDialog'
-import { logger } from '../../utils/logger'
-import { checkpointService } from '../../services'
+import { logger } from '@renderer/utils/logger'
+import { checkpointService } from '@renderer/services'
 
 interface CheckpointItem {
   id: string

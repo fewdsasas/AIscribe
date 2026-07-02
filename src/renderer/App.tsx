@@ -1,11 +1,15 @@
-import React, { lazy, Suspense, useEffect, useState } from 'react'
+import React, { lazy, useEffect, useState } from 'react'
 import { MainLayout } from './layouts/MainLayout'
 import { ToastProvider } from './components/shared/Toast'
 import { KeyboardShortcutHandler } from './components/shared/KeyboardShortcuts'
 import { useTheme } from './hooks/useTheme'
 import { ErrorBoundary } from './components/shared/ErrorBoundary'
+import { ViewLoader } from './components/shared/ViewLoader'
+import { useRoutePreload } from './hooks/useRoutePreload'
 import { logger } from './utils/logger'
 import { projectService } from './services/projectService'
+
+export type ViewType = 'dashboard' | 'editor' | 'studio' | 'workshop' | 'aiChat' | 'settings' | 'reader'
 
 // Lazy-loaded views with retry on chunk load failure (max 3 retries)
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -28,30 +32,37 @@ export function lazyWithRetry<T extends React.ComponentType<any>>(
   })
 }
 
-const DashboardView = lazyWithRetry(() => import('./views/DashboardView').then(m => ({ default: m.DashboardView })))
-const EditorView = lazyWithRetry(() => import('./views/EditorView').then(m => ({ default: m.EditorView })))
-const ReaderView = lazyWithRetry(() => import('./views/ReaderView').then(m => ({ default: m.ReaderView })))
-const StudioView = lazyWithRetry(() => import('./views/StudioView').then(m => ({ default: m.StudioView })))
-const WorkshopView = lazyWithRetry(() => import('./views/WorkshopView').then(m => ({ default: m.WorkshopView })))
-const AIChatView = lazyWithRetry(() => import('./components/ai-chat/AIChatView').then(m => ({ default: m.AIChatView })))
-const SettingsView = lazyWithRetry(() => import('./views/SettingsView').then(m => ({ default: m.SettingsView })))
-
-export type ViewType = 'dashboard' | 'editor' | 'studio' | 'workshop' | 'ai-chat' | 'settings' | 'reader'
-
-const ViewLoader: React.FC<{ children: React.ReactNode }> = ({ children }) => (
-  <Suspense
-    fallback={
-      <div className="h-full flex items-center justify-center" style={{ color: 'var(--color-text-secondary)' }}>
-        <div className="text-center">
-          <div className="animate-spin text-2xl mb-2">⏳</div>
-          <p className="text-sm">加载中...</p>
-        </div>
-      </div>
-    }
-  >
-    {children}
-  </Suspense>
+const DashboardView = lazyWithRetry(() =>
+  import(/* webpackChunkName: "dashboard" */ './views/DashboardView').then(m => ({ default: m.DashboardView }))
 )
+const EditorView = lazyWithRetry(() =>
+  import(/* webpackChunkName: "editor" */ './views/EditorView').then(m => ({ default: m.EditorView }))
+)
+const ReaderView = lazyWithRetry(() =>
+  import(/* webpackChunkName: "reader" */ './views/ReaderView').then(m => ({ default: m.ReaderView }))
+)
+const StudioView = lazyWithRetry(() =>
+  import(/* webpackChunkName: "studio" */ './views/StudioView').then(m => ({ default: m.StudioView }))
+)
+const WorkshopView = lazyWithRetry(() =>
+  import(/* webpackChunkName: "workshop" */ './views/WorkshopView').then(m => ({ default: m.WorkshopView }))
+)
+const AIChatView = lazyWithRetry(() =>
+  import(/* webpackChunkName: "ai-chat" */ './components/ai-chat/AIChatView').then(m => ({ default: m.AIChatView }))
+)
+const SettingsView = lazyWithRetry(() =>
+  import(/* webpackChunkName: "settings" */ './views/SettingsView').then(m => ({ default: m.SettingsView }))
+)
+
+const viewNameMap: Record<ViewType, string> = {
+  dashboard: '仪表盘',
+  editor: '编辑器',
+  studio: '工作室',
+  workshop: '工作坊',
+  aiChat: 'AI 对话',
+  settings: '设置',
+  reader: '阅读器'
+}
 
 const App: React.FC = () => {
   const [currentView, setCurrentView] = useState<ViewType>('dashboard')
@@ -89,6 +100,8 @@ const App: React.FC = () => {
     setCurrentView('dashboard')
   }
 
+  useRoutePreload(currentView)
+
   const renderView = () => {
     const view = (() => {
       switch (currentView) {
@@ -98,7 +111,7 @@ const App: React.FC = () => {
           return <StudioView projectId={selectedProjectId} />
         case 'workshop':
           return <WorkshopView projectId={selectedProjectId} />
-        case 'ai-chat':
+        case 'aiChat':
           return <AIChatView projectId={selectedProjectId} />
         case 'settings':
           return <SettingsView />
@@ -110,7 +123,7 @@ const App: React.FC = () => {
     })()
     return (
       <div key={currentView} className="animate-fade-in-up h-full">
-        <ViewLoader>{view}</ViewLoader>
+        <ViewLoader viewName={viewNameMap[currentView]}>{view}</ViewLoader>
       </div>
     )
   }

@@ -4,9 +4,11 @@ import react from '@vitejs/plugin-react'
 import { visualizer } from 'rollup-plugin-visualizer'
 
 /**
- * Group TipTap/ProseMirror editor dependencies and the custom editor components
- * into a dedicated chunk. This prevents the default Vite splitter from placing
- * the entire editor runtime into unrelated chunks (e.g. useMemoryMonitor).
+ * Group runtime dependencies and heavy views into dedicated chunks.
+ * - vendor-tiptap: TipTap/ProseMirror editor runtime (only needed by editor).
+ * - editor-core: custom editor components.
+ * - vendor-react: React ecosystem shared by all views.
+ * - view-*: individual heavyweight views to keep the main bundle small.
  */
 function rendererManualChunks(id: string): string | undefined {
   if (
@@ -23,6 +25,21 @@ function rendererManualChunks(id: string): string | undefined {
   if (id.includes('src/renderer/components/editor/')) {
     return 'editor-core'
   }
+  if (
+    id.includes('node_modules/react/') ||
+    id.includes('node_modules/react-dom/') ||
+    id.includes('node_modules/@heroicons/') ||
+    id.includes('node_modules/lucide-react/')
+  ) {
+    return 'vendor-react'
+  }
+  if (id.includes('src/renderer/views/StudioView')) return 'view-studio'
+  if (id.includes('src/renderer/views/WorkshopView')) return 'view-workshop'
+  if (id.includes('src/renderer/components/ai-chat/')) {
+    return 'view-ai-chat'
+  }
+  if (id.includes('src/renderer/views/ReaderView')) return 'view-reader'
+  if (id.includes('src/renderer/views/SettingsView')) return 'view-settings'
   return undefined
 }
 

@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { chapterService, novelService, projectService } from '../../services'
+import { chapterService, novelService, projectService } from '@renderer/services'
 
 interface ProjectDialogProps {
   open: boolean

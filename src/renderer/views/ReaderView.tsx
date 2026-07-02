@@ -1,15 +1,17 @@
-import React, { useEffect, useMemo, useState } from 'react'
+import React, { useCallback, useEffect, useMemo, useState } from 'react'
 import { SimpleReader } from '../components/reader/SimpleReader'
 import { logger } from '../utils/logger'
 import { useMemoryMonitor } from '../hooks/useMemoryMonitor'
 import { chapterService, novelService } from '../services'
 import Skeleton from '../components/shared/Skeleton'
+import type { AiRepairResult } from '@shared/types/ipc'
 
 interface ReaderViewProps {
   projectId: string | null
+  novelId?: string | null
 }
 
-export const ReaderView: React.FC<ReaderViewProps> = ({ projectId }) => {
+export const ReaderView: React.FC<ReaderViewProps> = ({ projectId, novelId }) => {
   useMemoryMonitor('ReaderView')
   const [chapters, setChapters] = useState<{ id: string; title: string; content: string }[]>([])
   const [selectedChapterIdx, setSelectedChapterIdx] = useState(0)
@@ -18,11 +20,65 @@ export const ReaderView: React.FC<ReaderViewProps> = ({ projectId }) => {
     const saved = localStorage.getItem('reader-font-size')
     return saved ? Number(saved) : 18
   })
+  const [repairing, setRepairing] = useState(false)
 
   // F35: 阅读设置持久化
   useEffect(() => {
     localStorage.setItem('reader-font-size', String(fontSize))
   }, [fontSize])
+
+  // AI 手动修复
+  const handleAiRepair = useCallback(async () => {
+    const api = window.aiscribe
+    if (!api || !novelId || !projectId || repairing) return
+
+    setRepairing(true)
+    try {
+      const result: AiRepairResult = await api.triggerAiRepair({ novelId, projectId })
+      if (result.applied) {
+        // 重新加载章节
+        const list = await chapterService.listWithContent(novelId)
+        if (list) {
+          setChapters(
+            list.map(ch => ({
+              id: ch.id,
+              title: ch.title,
+              content: ch.content
+            }))
+          )
+        }
+      }
+    } catch {
+      logger.warn('AI 修复失败')
+    } finally {
+      setRepairing(false)
+    }
+  }, [novelId, projectId, repairing])
+
+  // 监听自动修复完成事件刷新章节列表
+  useEffect(() => {
+    const api = window.aiscribe
+    if (!api || !novelId) return
+
+    const onDone = () => {
+      chapterService.listWithContent(novelId).then(list => {
+        if (list) {
+          setChapters(
+            list.map(ch => ({
+              id: ch.id,
+              title: ch.title,
+              content: ch.content
+            }))
+          )
+        }
+      })
+    }
+    api.onRepairDone(onDone)
+
+    return () => {
+      api.removeRepairListeners()
+    }
+  }, [novelId])
 
   // F33: 章节加载
   useEffect(() => {
@@ -112,6 +168,14 @@ export const ReaderView: React.FC<ReaderViewProps> = ({ projectId }) => {
           </span>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={handleAiRepair}
+            disabled={repairing || !novelId || !projectId}
+            className="px-2 py-1 text-xs rounded border disabled:opacity-30"
+            style={{ borderColor: 'var(--color-border)' }}
+          >
+            {repairing ? '修复中...' : 'AI 修复'}
+          </button>
           <button
             onClick={() => setFontSize(s => Math.max(14, s - 2))}
             className="px-2 py-1 text-xs rounded border"

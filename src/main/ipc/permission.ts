@@ -81,11 +81,13 @@ const PERMISSION_RULES: PermissionRule[] = [
   { channel: 'import:ai-repair', permission: 'write' },
   { channel: 'import:ai-repair-stream', permission: 'write' },
 
-  { channel: 'export:project:chunk', permission: 'write' }
+  { channel: 'export:project:chunk', permission: 'read' }
 ]
 
 class PermissionManager {
-  private userPermissions: Set<Permission> = new Set(['read', 'write', 'admin'])
+  // 默认仅授予 read 权限；应用初始化时必须显式调用 setPermissions 授予更高权限。
+  // 这防止新窗口/新上下文意外获得写/管理权限，符合最小权限原则。
+  private userPermissions: Set<Permission> = new Set(['read'])
 
   hasPermission(permission: Permission): boolean {
     return this.userPermissions.has(permission)

@@ -6,9 +6,7 @@
 /** Build a map from column names to row values */
 export function buildRowMap(row: unknown[], columns: string[]): Record<string, unknown> {
   if (row.length !== columns.length) {
-    throw new Error(
-      `Row/column length mismatch: ${row.length} values for ${columns.length} columns`
-    )
+    throw new Error(`Row/column length mismatch: ${row.length} values for ${columns.length} columns`)
   }
   const map: Record<string, unknown> = {}
   columns.forEach((col, i) => {

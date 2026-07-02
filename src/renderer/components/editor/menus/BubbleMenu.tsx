@@ -1,7 +1,7 @@
 import React, { useRef } from 'react'
 import { BubbleMenu as TipTapBubbleMenu } from '@tiptap/react'
 import type { Editor } from '@tiptap/core'
-import { useFocusTrap } from '../../../hooks/useFocusTrap'
+import { useFocusTrap } from '@renderer/hooks/useFocusTrap'
 
 interface BubbleMenuProps {
   editor: Editor | null

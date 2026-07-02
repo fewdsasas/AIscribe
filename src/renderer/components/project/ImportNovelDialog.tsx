@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
-import { importService } from '../../services'
-import type { ImportNovelData, ImportNovelResult } from '../../../shared/types/ipc'
+import { importService } from '@renderer/services'
+import type { ImportNovelData, ImportNovelResult } from '@shared/types/ipc'
 import { NovelRepairStatus } from './NovelRepairStatus'
 
 interface ImportNovelDialogProps {
@@ -61,9 +61,8 @@ export const ImportNovelDialog: React.FC<ImportNovelDialogProps> = ({ open, proj
     })
 
     return () => {
-      // Reset handlers to no-ops on unmount to prevent stale callbacks
-      api.onRepairProgress(() => {})
-      api.onRepairDone(() => {})
+      // 组件卸载时彻底移除修复监听器，避免 ipcRenderer 监听器累积泄漏
+      api.removeRepairListeners()
     }
   }, [])
 

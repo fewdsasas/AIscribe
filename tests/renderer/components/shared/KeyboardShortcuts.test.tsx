@@ -28,7 +28,7 @@ describe('KeyboardShortcutHandler', () => {
   it('should navigate on ctrl+1-7', () => {
     const onNavigate = vi.fn()
     render(<KeyboardShortcutHandler onNavigate={onNavigate} />)
-    const views = ['dashboard', 'editor', 'studio', 'workshop', 'ai-chat', 'settings', 'reader']
+    const views = ['dashboard', 'editor', 'studio', 'workshop', 'aiChat', 'settings', 'reader']
     for (let i = 0; i < 7; i++) {
       fireKeyboard(String(i + 1))
       expect(onNavigate).toHaveBeenNthCalledWith(i + 1, views[i])

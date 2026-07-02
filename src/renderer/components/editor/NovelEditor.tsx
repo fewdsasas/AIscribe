@@ -8,7 +8,7 @@ import { CharacterMentionExtension } from './extensions/CharacterMention'
 import { countChineseChars, formatProgress, WritingGoalPlugin } from './extensions/WritingGoal'
 import { Toolbar } from './menus/Toolbar'
 import { BubbleMenu } from './menus/BubbleMenu'
-import { logger } from '../../utils/logger'
+import { logger } from '@renderer/utils/logger'
 import './styles/editor.css'
 
 const MAX_CHAPTER_CHARS = 500_000

@@ -1,7 +1,7 @@
 import React, { useState } from 'react'
 import { StreamingText } from './StreamingText'
 import { SkillInvocationCard } from './SkillInvocationCard'
-import type { ChatMessage as ChatMessageType } from '../../store'
+import type { ChatMessage as ChatMessageType } from '@renderer/store'
 
 function renderContent(text: string): React.ReactNode {
   const parts = text.split('```')

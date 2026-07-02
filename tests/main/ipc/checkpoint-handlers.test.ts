@@ -87,14 +87,14 @@ describe('Checkpoint IPC Handlers', () => {
       const project = await db.createProject({ name: 'List Test', genre: 'sci_fi', status: 'planning' })
       await db.createCheckpoint({ projectId: project.id, label: 'v1' })
 
-      const result = await handler(null, project.id)
+      const result = await handler(null, { projectId: project.id })
       expect(Array.isArray(result)).toBe(true)
       expect(result.length).toBeGreaterThan(0)
     })
 
     it('should reject invalid project ID', async () => {
       const handler = getRegisteredHandler('checkpoint:list')
-      await expect(handler(null, 'invalid')).rejects.toThrow('项目ID 格式无效')
+      await expect(handler(null, { projectId: 'invalid' })).rejects.toThrow('项目ID 格式无效')
     })
   })
 
@@ -104,14 +104,14 @@ describe('Checkpoint IPC Handlers', () => {
       const project = await db.createProject({ name: 'Restore Test', genre: 'fantasy', status: 'planning' })
       const checkpoint = await db.createCheckpoint({ projectId: project.id, label: 'v2' })
 
-      const result = await handler(null, checkpoint.id)
+      const result = await handler(null, { id: checkpoint.id })
       // getCheckpointSnapshot may return the checkpoint data or null if not implemented
       expect(result).toBeDefined()
     })
 
     it('should reject invalid checkpoint ID', async () => {
       const handler = getRegisteredHandler('checkpoint:restore')
-      await expect(handler(null, 'invalid')).rejects.toThrow('检查点ID 格式无效')
+      await expect(handler(null, { id: 'invalid' })).rejects.toThrow('检查点ID 格式无效')
     })
   })
 
@@ -135,13 +135,13 @@ describe('Checkpoint IPC Handlers', () => {
       const handler = getRegisteredHandler('session:list')
       const project = await db.createProject({ name: 'Session List', genre: 'fantasy', status: 'planning' })
 
-      const result = await handler(null, project.id)
+      const result = await handler(null, { projectId: project.id })
       expect(Array.isArray(result)).toBe(true)
     })
 
     it('should reject invalid project ID', async () => {
       const handler = getRegisteredHandler('session:list')
-      await expect(handler(null, 'invalid')).rejects.toThrow('项目ID 格式无效')
+      await expect(handler(null, { projectId: 'invalid' })).rejects.toThrow('项目ID 格式无效')
     })
   })
 })

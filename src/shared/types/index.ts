@@ -62,6 +62,14 @@ export interface ChapterSummary {
   notes?: string
 }
 
+/** 章节列表分页结果 */
+export interface ChapterListPage {
+  items: ChapterSummary[]
+  total: number
+  offset: number
+  limit: number
+}
+
 export type ChapterStatus = 'draft' | 'revised' | 'polished' | 'final'
 
 // ===== Character =====

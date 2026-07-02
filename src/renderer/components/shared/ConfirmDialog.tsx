@@ -1,5 +1,5 @@
 import React, { useEffect, useRef } from 'react'
-import { useFocusTrap } from '../../hooks/useFocusTrap'
+import { useFocusTrap } from '@renderer/hooks/useFocusTrap'
 
 interface ConfirmDialogProps {
   open: boolean

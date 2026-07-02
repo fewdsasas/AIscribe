@@ -107,7 +107,7 @@ describe('Extended IPC Handlers', () => {
         targetAudience: ''
       })
 
-      const result = await handler(null, novel.id)
+      const result = await handler(null, { novelId: novel.id })
       expect(Array.isArray(result)).toBe(true)
     })
   })
@@ -153,7 +153,7 @@ describe('Extended IPC Handlers', () => {
 
       await saveHandler(null, { novelId: novel.id, name: 'Get World', type: 'sci_fi' })
 
-      const result = await handler(null, novel.id)
+      const result = await handler(null, { novelId: novel.id })
       expect(result).toBeDefined()
       expect(result.name).toBe('Get World')
     })
@@ -180,15 +180,15 @@ describe('Extended IPC Handlers', () => {
       const handler = getRegisteredHandler('checkpoint:list')
       const project = await db.createProject({ name: 'CP List', genre: 'fantasy', status: 'planning' })
 
-      const result = await handler(null, project.id)
+      const result = await handler(null, { projectId: project.id })
       expect(Array.isArray(result)).toBe(true)
     })
   })
 
-  describe('writer-model:get', () => {
+  describe('writerModel:get', () => {
     it('should get writer model', async () => {
-      const handler = getRegisteredHandler('writer-model:get')
-      const saveHandler = getRegisteredHandler('writer-model:save')
+      const handler = getRegisteredHandler('writerModel:get')
+      const saveHandler = getRegisteredHandler('writerModel:save')
       const writerId = 'a0eebc99-9c0b-4ef8-bb6d-6bb9bd380a11'
 
       await saveHandler(null, {
@@ -199,7 +199,7 @@ describe('Extended IPC Handlers', () => {
         lastUpdated: new Date().toISOString()
       })
 
-      const result = await handler(null, writerId)
+      const result = await handler(null, { writerId })
       expect(result).toBeDefined()
       expect(result.writerId).toBe(writerId)
     })
@@ -210,21 +210,21 @@ describe('Extended IPC Handlers', () => {
       const setHandler = getRegisteredHandler('storage:encryptSet')
       const getHandler = getRegisteredHandler('storage:encryptGet')
 
-      await setHandler(null, 'test-key', 'test-value')
-      const result = await getHandler(null, 'test-key')
+      await setHandler(null, { key: 'test-key', value: 'test-value' })
+      const result = await getHandler(null, { key: 'test-key' })
       expect(result).toBe('test-value')
     })
 
     it('should return null for missing key', async () => {
       const getHandler = getRegisteredHandler('storage:encryptGet')
-      const result = await getHandler(null, 'non-existent-key')
+      const result = await getHandler(null, { key: 'non-existent-key' })
       expect(result).toBeNull()
     })
   })
 
-  describe('plot-structure:save', () => {
+  describe('plotStructure:save', () => {
     it('should save plot structure via IPC', async () => {
-      const handler = getRegisteredHandler('plot-structure:save')
+      const handler = getRegisteredHandler('plotStructure:save')
       const project = await db.createProject({ name: 'Plot Save', genre: 'fantasy', status: 'planning' })
       const novel = await db.createNovel({
         projectId: project.id,
@@ -262,7 +262,7 @@ describe('Extended IPC Handlers', () => {
     })
 
     it('should update plot structure on re-save', async () => {
-      const handler = getRegisteredHandler('plot-structure:save')
+      const handler = getRegisteredHandler('plotStructure:save')
       const project = await db.createProject({ name: 'Plot Update', genre: 'fantasy', status: 'planning' })
       const novel = await db.createNovel({
         projectId: project.id,
@@ -306,15 +306,15 @@ describe('Extended IPC Handlers', () => {
     })
 
     it('should reject invalid data (empty object)', async () => {
-      const handler = getRegisteredHandler('plot-structure:save')
+      const handler = getRegisteredHandler('plotStructure:save')
       await expect(handler(null, {})).rejects.toThrow()
     })
   })
 
-  describe('plot-structure:get-by-novel', () => {
+  describe('plotStructure:get-by-novel', () => {
     it('should get plot structure by novel ID', async () => {
-      const handler = getRegisteredHandler('plot-structure:get-by-novel')
-      const saveHandler = getRegisteredHandler('plot-structure:save')
+      const handler = getRegisteredHandler('plotStructure:get-by-novel')
+      const saveHandler = getRegisteredHandler('plotStructure:save')
       const project = await db.createProject({ name: 'Plot Get', genre: 'fantasy', status: 'planning' })
       const novel = await db.createNovel({
         projectId: project.id,
@@ -343,7 +343,7 @@ describe('Extended IPC Handlers', () => {
         notes: 'Plot notes'
       })
 
-      const result = await handler(null, novel.id)
+      const result = await handler(null, { novelId: novel.id })
       expect(result).toBeDefined()
       expect(result.novelId).toBe(novel.id)
       expect(result.framework).toBe('three_act')
@@ -353,14 +353,14 @@ describe('Extended IPC Handlers', () => {
     })
 
     it('should return null for non-existent novelId', async () => {
-      const handler = getRegisteredHandler('plot-structure:get-by-novel')
-      const result = await handler(null, '00000000-0000-0000-0000-000000000000')
+      const handler = getRegisteredHandler('plotStructure:get-by-novel')
+      const result = await handler(null, { novelId: '00000000-0000-0000-0000-000000000000' })
       expect(result).toBeNull()
     })
 
     it('should reject invalid novelId (empty string)', async () => {
-      const handler = getRegisteredHandler('plot-structure:get-by-novel')
-      await expect(handler(null, '')).rejects.toThrow()
+      const handler = getRegisteredHandler('plotStructure:get-by-novel')
+      await expect(handler(null, { novelId: '' })).rejects.toThrow()
     })
   })
 
@@ -487,7 +487,7 @@ describe('Extended IPC Handlers', () => {
         ]
       })
 
-      const result = await handler(null, novel.id)
+      const result = await handler(null, { novelId: novel.id })
       expect(result).toBeDefined()
       expect(result.novelId).toBe(novel.id)
       expect(result.type).toBe('brief')
@@ -499,13 +499,13 @@ describe('Extended IPC Handlers', () => {
 
     it('should return null for non-existent novelId', async () => {
       const handler = getRegisteredHandler('outline:get')
-      const result = await handler(null, '00000000-0000-0000-0000-000000000000')
+      const result = await handler(null, { novelId: '00000000-0000-0000-0000-000000000000' })
       expect(result).toBeNull()
     })
 
     it('should reject invalid novelId', async () => {
       const handler = getRegisteredHandler('outline:get')
-      await expect(handler(null, '')).rejects.toThrow()
+      await expect(handler(null, { novelId: '' })).rejects.toThrow()
     })
   })
 

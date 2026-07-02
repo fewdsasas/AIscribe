@@ -1,5 +1,6 @@
 import type {
   Chapter,
+  ChapterListPage,
   ChapterSummary,
   Character,
   Checkpoint,
@@ -14,6 +15,8 @@ import type {
   World
 } from './index'
 import type {
+  AiRepairData,
+  AiRepairResult,
   CreateChapterData,
   CreateCharacterData,
   CreateCheckpointData,
@@ -21,6 +24,8 @@ import type {
   CreateProjectData,
   CreateSessionData,
   ExportResult,
+  ImportNovelData,
+  ImportNovelResult,
   LearningAnalysisResult,
   LLMConfigMeta,
   ProjectSummary,
@@ -28,9 +33,9 @@ import type {
   SaveOutlineData,
   SavePlotStructureData,
   SaveWorldData,
+  SelectNovelFileResult,
   SkillDetailItem,
   SkillInvokeResult,
-  SkillListItem,
   UpdateChapterData,
   UpdateProjectData
 } from './ipc'
@@ -46,9 +51,13 @@ export interface AiscribeAPI {
   novelCreate(data: CreateNovelData): Promise<Novel>
   novelGet(id: string): Promise<Novel | null>
   novelGetByProject(projectId: string): Promise<Novel | null>
+  novelImport(data: ImportNovelData): Promise<ImportNovelResult>
+  selectNovelFile(): Promise<SelectNovelFileResult>
 
   chapterCreate(data: CreateChapterData): Promise<Chapter>
   chapterList(novelId: string): Promise<ChapterSummary[]>
+  chapterListPaginated(novelId: string, offset: number, limit: number): Promise<ChapterListPage>
+  chapterCount(novelId: string): Promise<number>
   chapterListWithContent(novelId: string): Promise<Chapter[]>
   chapterGet(id: string): Promise<Chapter | null>
   chapterUpdate(id: string, data: UpdateChapterData): Promise<boolean>
@@ -104,9 +113,9 @@ export interface AiscribeAPI {
   exportProject(options: { projectId: string; format: string; includeSynopsis?: boolean }): Promise<ExportResult>
 
   // Secure encrypted storage
-  secureStorageSet(key: string, value: string): Promise<boolean>
+  secureStorageSet(key: string, value: string): Promise<OperationResult>
   secureStorageGet(key: string): Promise<string | null>
-  secureStorageRemove(key: string): Promise<boolean>
+  secureStorageRemove(key: string): Promise<OperationResult>
 
   // Memory monitoring
   getMemoryUsage(): Promise<{
@@ -118,6 +127,12 @@ export interface AiscribeAPI {
     dbSize: number
     timestamp: number
   }>
+
+  // AI structure repair
+  triggerAiRepair(data: AiRepairData): Promise<AiRepairResult>
+  onRepairProgress(callback: (event: { novelId: string; current: number; total: number; action: string }) => void): void
+  onRepairDone(callback: (event: { novelId: string; actionsCount: number }) => void): void
+  removeRepairListeners(): void
 }
 
 declare global {

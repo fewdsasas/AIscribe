@@ -1,5 +1,6 @@
 import type {
   Chapter,
+  ChapterListPage,
   ChapterSummary,
   Character,
   Checkpoint,
@@ -54,6 +55,8 @@ export interface IDatabase {
   // Chapter
   createChapter(data: Partial<Omit<Chapter, 'id' | 'createdAt' | 'updatedAt'>> & { id?: string }): Chapter
   listChapters(novelId: string): ChapterSummary[]
+  listChaptersPaginated(novelId: string, offset: number, limit: number): ChapterListPage
+  countChapters(novelId: string): number
   listChaptersWithContent(novelId: string): Chapter[]
   getChapter(id: string): Chapter | null
   updateChapter(id: string, data: Partial<Omit<Chapter, 'id' | 'createdAt' | 'novelId'>>): void

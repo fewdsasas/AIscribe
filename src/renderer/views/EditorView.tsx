@@ -4,9 +4,14 @@ import { logger } from '../utils/logger'
 import { useToast } from '../components/shared/Toast'
 import { ConfirmDialog } from '../components/shared/ConfirmDialog'
 import { ErrorRetry } from '../components/shared/ErrorRetry'
+import { ImportNovelDialog } from '../components/project/ImportNovelDialog'
 import { useMemoryMonitor } from '../hooks/useMemoryMonitor'
+import { useVirtualScroll } from '../hooks/useVirtualScroll'
 import { chapterService, llmService, novelService, projectService } from '../services'
 import type { ILLMService } from '../services'
+
+const CHAPTER_PAGE_SIZE = 100
+const CHAPTER_ITEM_HEIGHT = 36
 
 interface EditorViewProps {
   projectId: string | null
@@ -53,7 +58,10 @@ async function generateContinuation(llm: ILLMService, text: string, signal?: Abo
 export const EditorView: React.FC<EditorViewProps> = ({ projectId, onSwitchProject }) => {
   useMemoryMonitor('EditorView')
   const { showToast } = useToast()
-  const [chapters, setChapters] = useState<{ id: string; title: string }[]>([])
+  const [chapterCount, setChapterCount] = useState(0)
+  const [chapterMap, setChapterMap] = useState<Map<string, { id: string; title: string }>>(new Map())
+  const [chapterByIndex, setChapterByIndex] = useState<Map<number, string>>(new Map())
+  const [loadedPages, setLoadedPages] = useState<Set<number>>(new Set())
   const [selectedChapterId, setSelectedChapterId] = useState<string | null>(null)
   const [saveStatus, setSaveStatus] = useState<'saved' | 'unsaved' | 'saving'>('saved')
   const [aiContinuing, setAiContinuing] = useState(false)
@@ -64,10 +72,13 @@ export const EditorView: React.FC<EditorViewProps> = ({ projectId, onSwitchProje
   const [chapterError, setChapterError] = useState<string | null>(null)
   const [chapterRetryTrigger, setChapterRetryTrigger] = useState(0)
   const [showAIConfirm, setShowAIConfirm] = useState(false)
+  const [showImportDialog, setShowImportDialog] = useState(false)
+  const [importSuccessTrigger, setImportSuccessTrigger] = useState(0)
   const editorContentRef = useRef<{ json: Record<string, unknown>; text: string; chars: number } | null>(null)
   const editorRef = useRef<NovelEditorHandle>(null)
   const isMountedRef = useRef(true)
   const aiAbortRef = useRef<AbortController | null>(null)
+  const novelIdRef = useRef<string | null>(null)
 
   // 统一清理：unmount 时清除所有异步副作用引用
   useEffect(() => {
@@ -95,11 +106,29 @@ export const EditorView: React.FC<EditorViewProps> = ({ projectId, onSwitchProje
         const novel = await novelService.getByProject(projectId)
         if (cancelled || !isMountedRef.current) return
         const novelId = novel?.id ?? projectId
-        const list = await chapterService.list(novelId)
+        novelIdRef.current = novelId
+        const count = await chapterService.count(novelId)
         if (cancelled || !isMountedRef.current) return
-        if (list && list.length > 0) {
-          setChapters(list.map(ch => ({ id: ch.id, title: ch.title })))
-          setSelectedChapterId(list[0].id)
+        setChapterCount(count)
+        setLoadedPages(new Set())
+        setChapterMap(new Map())
+        setChapterByIndex(new Map())
+        if (count > 0) {
+          const firstPage = await chapterService.listPaginated(novelId, 0, CHAPTER_PAGE_SIZE)
+          if (cancelled || !isMountedRef.current) return
+          const map = new Map<string, { id: string; title: string }>()
+          const byIndex = new Map<number, string>()
+          for (let i = 0; i < firstPage.items.length; i++) {
+            const ch = firstPage.items[i]
+            map.set(ch.id, { id: ch.id, title: ch.title })
+            byIndex.set(i, ch.id)
+          }
+          setChapterMap(map)
+          setChapterByIndex(byIndex)
+          setLoadedPages(new Set([0]))
+          setSelectedChapterId(firstPage.items[0]?.id ?? null)
+        } else {
+          setSelectedChapterId(null)
         }
       } catch (err) {
         if (!cancelled && isMountedRef.current) logger.warn('EditorView: 加载章节列表失败', err)
@@ -109,7 +138,63 @@ export const EditorView: React.FC<EditorViewProps> = ({ projectId, onSwitchProje
     return () => {
       cancelled = true
     }
-  }, [projectId])
+  }, [projectId, importSuccessTrigger])
+
+  const { containerProps, startIndex, endIndex, topOffset, totalHeight } = useVirtualScroll(chapterCount, {
+    itemHeight: CHAPTER_ITEM_HEIGHT,
+    containerHeight: 224
+  })
+
+  // 根据可视区按需加载章节分页数据
+  useEffect(() => {
+    if (!novelIdRef.current || chapterCount === 0) return
+    const novelId = novelIdRef.current
+    const startPage = Math.floor(startIndex / CHAPTER_PAGE_SIZE) * CHAPTER_PAGE_SIZE
+    const endPage = Math.floor(endIndex / CHAPTER_PAGE_SIZE) * CHAPTER_PAGE_SIZE
+    const pagesToLoad: number[] = []
+    for (let offset = startPage; offset <= endPage; offset += CHAPTER_PAGE_SIZE) {
+      if (!loadedPages.has(offset)) {
+        pagesToLoad.push(offset)
+      }
+    }
+    if (pagesToLoad.length === 0) return
+
+    let cancelled = false
+    const load = async () => {
+      try {
+        for (const offset of pagesToLoad) {
+          if (cancelled || !isMountedRef.current) return
+          const page = await chapterService.listPaginated(novelId, offset, CHAPTER_PAGE_SIZE)
+          if (cancelled || !isMountedRef.current) return
+          setChapterMap(prev => {
+            const next = new Map(prev)
+            for (const ch of page.items) {
+              next.set(ch.id, { id: ch.id, title: ch.title })
+            }
+            return next
+          })
+          setChapterByIndex(prev => {
+            const next = new Map(prev)
+            for (let i = 0; i < page.items.length; i++) {
+              next.set(offset + i, page.items[i].id)
+            }
+            return next
+          })
+          setLoadedPages(prev => {
+            const next = new Set(prev)
+            next.add(offset)
+            return next
+          })
+        }
+      } catch (err) {
+        if (!cancelled && isMountedRef.current) logger.warn('EditorView: 加载章节分页失败', err)
+      }
+    }
+    load()
+    return () => {
+      cancelled = true
+    }
+  }, [chapterCount, startIndex, endIndex, loadedPages])
 
   // Load chapter content when selected chapter changes
   useEffect(() => {
@@ -278,22 +363,40 @@ export const EditorView: React.FC<EditorViewProps> = ({ projectId, onSwitchProje
           </div>
         </div>
 
-        <select
-          value={selectedChapterId ?? ''}
-          onChange={e => setSelectedChapterId(e.target.value || null)}
-          className="bg-surface border rounded-lg px-3 py-1.5 text-sm focus:outline-none"
-          style={{ borderColor: 'var(--color-border)' }}
+        <div
+          {...containerProps}
+          className="bg-surface border rounded-lg text-sm focus:outline-none w-56"
+          style={{ ...containerProps.style, borderColor: 'var(--color-border)' }}
         >
-          {chapters.length > 0 ? (
-            chapters.map(ch => (
-              <option key={ch.id} value={ch.id}>
-                {ch.title}
-              </option>
-            ))
+          {chapterCount === 0 ? (
+            <div className="px-3 py-2 text-[--color-text-secondary]">暂无章节，请先创建</div>
           ) : (
-            <option value="">暂无章节，请先创建</option>
+            <div style={{ height: totalHeight, position: 'relative' }}>
+              <div style={{ transform: `translateY(${topOffset}px)` }}>
+                {Array.from({ length: endIndex - startIndex + 1 }, (_, i) => startIndex + i).map(index => {
+                  const id = chapterByIndex.get(index)
+                  const ch = id ? chapterMap.get(id) : undefined
+                  return (
+                    <button
+                      key={index}
+                      onClick={() => id && setSelectedChapterId(id)}
+                      className="w-full text-left px-3 truncate transition-colors hover:bg-[--color-bg]"
+                      style={{
+                        height: CHAPTER_ITEM_HEIGHT,
+                        lineHeight: `${CHAPTER_ITEM_HEIGHT}px`,
+                        color: id === selectedChapterId ? 'var(--color-primary)' : 'var(--color-text)',
+                        background: id === selectedChapterId ? 'var(--color-bg)' : undefined
+                      }}
+                      disabled={!id}
+                    >
+                      {ch ? ch.title : '...'}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
           )}
-        </select>
+        </div>
         {chapterLoading && <span className="text-xs animate-spin">⏳</span>}
 
         <span
@@ -314,6 +417,13 @@ export const EditorView: React.FC<EditorViewProps> = ({ projectId, onSwitchProje
 
         <div className="ml-auto flex flex-col items-end gap-1">
           <div className="flex gap-2">
+            <button
+              onClick={() => setShowImportDialog(true)}
+              className="px-3 py-1.5 text-xs rounded-lg font-medium transition-colors border"
+              style={{ borderColor: 'var(--color-border)', color: 'var(--color-text)' }}
+            >
+              📥 导入小说
+            </button>
             <button
               onClick={handleAIContinue}
               disabled={aiContinuing}
@@ -341,7 +451,7 @@ export const EditorView: React.FC<EditorViewProps> = ({ projectId, onSwitchProje
           <NovelEditor
             ref={editorRef}
             chapterId={selectedChapterId ?? undefined}
-            chapterTitle={chapters.find(c => c.id === selectedChapterId)?.title ?? '第一章'}
+            chapterTitle={chapterMap.get(selectedChapterId ?? '')?.title ?? '第一章'}
             initialContent={initialContent}
             onContentChange={handleContentChange}
             onSave={handleSave}
@@ -359,6 +469,20 @@ export const EditorView: React.FC<EditorViewProps> = ({ projectId, onSwitchProje
           confirmLabel="续写"
           onConfirm={handleAIConfirm}
           onCancel={() => setShowAIConfirm(false)}
+        />
+      )}
+
+      {/* Import novel dialog */}
+      {projectId && (
+        <ImportNovelDialog
+          open={showImportDialog}
+          projectId={projectId}
+          onClose={() => setShowImportDialog(false)}
+          onImported={() => {
+            setShowImportDialog(false)
+            setImportSuccessTrigger(prev => prev + 1)
+            showToast('小说导入成功', 'success')
+          }}
         />
       )}
     </div>
