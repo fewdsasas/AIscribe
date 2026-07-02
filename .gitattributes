@@ -1,0 +1,43 @@
+# Auto-detect text files and normalize to LF on checkout
+* text=auto eol=lf
+
+# Source code
+*.ts     text diff=typescript
+*.tsx    text diff=typescript
+*.js     text diff=javascript
+*.jsx    text diff=javascript
+*.mjs    text diff=javascript
+*.json   text diff=json
+*.css    text diff=css
+*.scss   text diff=css
+
+# Config files
+*.yml    text diff=yaml
+*.yaml   text diff=yaml
+*.config.* text
+
+# Markdown
+*.md     text diff=markdown
+
+# Shell scripts
+*.sh     text eol=lf
+
+# Windows-specific
+*.bat    text eol=crlf
+*.ps1    text eol=crlf
+
+# Binary files (should not be normalized)
+*.png    binary
+*.jpg    binary
+*.jpeg   binary
+*.gif    binary
+*.ico    binary
+*.svg    binary
+*.woff   binary
+*.woff2  binary
+*.eot    binary
+*.ttf    binary
+*.wasm   binary
+*.db     binary
+*.db-wal binary
+*.db-shm binary
